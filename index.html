@@ -1,34 +1,114 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Messho SC Attendance</title>
-<style>body{font-family:Arial;margin:0;background:#f5f7fb;color:#172033}header{background:#172033;color:#fff;padding:18px}main{max-width:700px;margin:20px auto;padding:0 14px}.card{background:#fff;border-radius:16px;padding:18px;margin:14px 0;box-shadow:0 4px 18px #0001}input,button{width:100%;padding:12px;margin:6px 0;box-sizing:border-box;border-radius:10px;border:1px solid #ddd}button{background:#2563eb;color:white;border:0;font-weight:bold}.out{background:#d92d20}#msg{padding:10px;background:#eef4ff;border-radius:10px}</style></head>
-<body><header><h1>Messho SC</h1><div>Staff Attendance • Shift 09:30 AM–06:00 PM</div></header><main><div class="card"><h2>Attendance</h2><input id="id" placeholder="Employee ID (e.g. EMP001)"><input id="pin" type="password" placeholder="PIN"><button onclick="mark('in')">🟢 Check In</button><button class="out" onclick="mark('out')">🔴 Check Out</button><div id="msg">Enter Employee ID and PIN.</div></div></main>
-<script type="module">
-import {createClient} from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-const sb=createClient('https://iijuflktxqqtgjbdywwj.supabase.co','sb_publishable_DPvuwTV2LgNOIeCR1XOGOQ_NyOMn0J0');
-const msg=t=>document.getElementById('msg').textContent=t;
-function gps(){return new Promise((ok,no)=>navigator.geolocation.getCurrentPosition(p=>ok(p.coords),()=>no('GPS permission allow karo.'),{enableHighAccuracy:true,timeout:10000,maximumAge:0}))}
-async function mark(type){
- const id=document.getElementById('id').value.trim().toUpperCase(),pin=document.getElementById('pin').value.trim();
- if(!id||!pin)return msg('Employee ID aur PIN bharo.');
- msg('GPS verify ho raha hai...');
- try{
-  const c=await gps();
-  const {data:e,error:ee}=await sb.from('employees').select('*').eq('employee_id',id).eq('pin',pin).single();
-  if(ee||!e)return msg('Employee ID/PIN incorrect.');
-  const now=new Date(),date=now.toISOString().slice(0,10),time=now.toTimeString().slice(0,5);
-  if(type==='in'){
-   const day=now.toLocaleDateString('en-US',{weekday:'long'});
-   const late=(now.getHours()>9)||(now.getHours()===9&&now.getMinutes()>30);
-   const {data:old}=await sb.from('attendance').select('id').eq('employee_id',e.id).eq('attendance_date',date).maybeSingle();
-   if(old)return msg('Aaj ka attendance already hai.');
-   const status=e.week_off===day?'Week-off':late?'Late':'Present';
-   const {error}=await sb.from('attendance').insert({employee_id:e.id,attendance_date:date,check_in:time,status,check_in_lat:c.latitude,check_in_lng:c.longitude,check_in_accuracy:c.accuracy});
-   if(error)throw error; msg('Check-In successful ✅');
-  } else {
-   const {data:r}=await sb.from('attendance').select('*').eq('employee_id',e.id).eq('attendance_date',date).maybeSingle();
-   if(!r)return msg('Aaj ka Check-In nahi mila.');
-   const {error}=await sb.from('attendance').update({check_out:time,check_out_lat:c.latitude,check_out_lng:c.longitude,check_out_accuracy:c.accuracy}).eq('id',r.id);
-   if(error)throw error; msg('Check-Out successful ✅');
-  }
- }catch(x){msg('Attendance failed: '+(x.message||x))}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Messho SC Attendance</title>
+<style>
+body{font-family:Arial,sans-serif;margin:0;background:#f5f7fb;color:#172033}
+header{background:#172033;color:#fff;padding:20px}
+main{max-width:650px;margin:25px auto;padding:0 15px}
+.card{background:#fff;padding:20px;border-radius:16px;box-shadow:0 4px 18px #0001}
+input,button{width:100%;padding:13px;margin:7px 0;box-sizing:border-box;border-radius:10px;border:1px solid #ddd;font-size:16px}
+button{background:#2563eb;color:#fff;border:0;font-weight:bold}.out{background:#d92d20}
+#msg{margin-top:12px;padding:12px;background:#eef4ff;border-radius:10px}
+</style>
+</head>
+<body>
+<header><h1>Messho SC</h1><div>Staff Attendance • Shift 09:30 AM–06:00 PM</div></header>
+<main>
+<div class="card">
+<h2>Attendance</h2>
+<input id="employeeId" placeholder="Employee ID (e.g. EMP001)" autocomplete="off">
+<input id="pin" type="password" placeholder="PIN" autocomplete="off">
+<button id="checkIn">🟢 Check In</button>
+<button id="checkOut" class="out">🔴 Check Out</button>
+<div id="msg">Enter Employee ID and PIN.</div>
+</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL="https://iijuflktxqqtgjbdywwj.supabase.co";
+const SUPABASE_KEY="sb_publishable_DPvuwTV2LgNOIeCR1XOGOQ_NyOMn0J0";
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const msg=document.getElementById("msg");
+
+function message(t){msg.textContent=t;}
+
+function getGPS(){
+ return new Promise((resolve,reject)=>{
+  if(!navigator.geolocation){reject(new Error("This browser does not support GPS."));return;}
+  navigator.geolocation.getCurrentPosition(
+   p=>resolve(p.coords),
+   ()=>reject(new Error("GPS permission allow karo.")),
+   {enableHighAccuracy:true,timeout:15000,maximumAge:0}
+  );
+ });
 }
-</script></body></html>
+
+async function mark(type){
+ const id=document.getElementById("employeeId").value.trim().toUpperCase();
+ const pin=document.getElementById("pin").value.trim();
+
+ if(!id||!pin){message("Employee ID aur PIN bharo.");return;}
+
+ message("Connecting to database...");
+
+ try{
+  const {data:emp,error:empError}=await db.from("employees")
+    .select("id,employee_id,name,pin,week_off,active")
+    .eq("employee_id",id).eq("pin",pin).eq("active",true).maybeSingle();
+
+  if(empError){console.error(empError);message("Database error: "+empError.message);return;}
+  if(!emp){message("Employee ID/PIN incorrect.");return;}
+
+  message("GPS location verify ho rahi hai...");
+  const coords=await getGPS();
+
+  const now=new Date();
+  const date=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");
+  const time=String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");
+
+  if(type==="in"){
+   const {data:existing,error:findError}=await db.from("attendance")
+     .select("id").eq("employee_id",emp.id).eq("attendance_date",date).maybeSingle();
+   if(findError){message("Attendance check error: "+findError.message);return;}
+   if(existing){message("Aaj ka attendance already laga hua hai.");return;}
+
+   const day=now.toLocaleDateString("en-US",{weekday:"long"});
+   const late=(now.getHours()>9)||(now.getHours()===9&&now.getMinutes()>30);
+   const status=emp.week_off===day?"Week-off":(late?"Late":"Present");
+
+   const {error}=await db.from("attendance").insert({
+    employee_id:emp.id,attendance_date:date,check_in:time,status:status,
+    check_in_lat:coords.latitude,check_in_lng:coords.longitude,
+    check_in_accuracy:coords.accuracy
+   });
+   if(error){message("Check-In error: "+error.message);return;}
+   message("Check-In successful ✅");
+  }else{
+   const {data:r,error:findError}=await db.from("attendance").select("*")
+    .eq("employee_id",emp.id).eq("attendance_date",date).maybeSingle();
+   if(findError){message("Attendance check error: "+findError.message);return;}
+   if(!r){message("Aaj ka Check-In nahi mila.");return;}
+   if(r.check_out){message("Check-Out already ho chuka hai.");return;}
+
+   const {error}=await db.from("attendance").update({
+    check_out:time,check_out_lat:coords.latitude,check_out_lng:coords.longitude,
+    check_out_accuracy:coords.accuracy
+   }).eq("id",r.id);
+   if(error){message("Check-Out error: "+error.message);return;}
+   message("Check-Out successful ✅");
+  }
+ }catch(err){
+  console.error(err);
+  message("Error: "+(err.message||err));
+ }
+}
+
+document.getElementById("checkIn").addEventListener("click",()=>mark("in"));
+document.getElementById("checkOut").addEventListener("click",()=>mark("out"));
+</script>
+</body>
+</html>
