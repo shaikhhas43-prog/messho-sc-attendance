@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Messho SC Attendance</title>
+
+<style>
+body{
+  font-family:Arial,sans-serif;
+  margin:0;
+  background:#f5f7fb;
+  color:#172033;
+}
+header{
+  background:#172033;
+  color:#fff;
+  padding:20px;
+}
+main{
+  max-width:650px;
+  margin:25px auto;
+  padding:0 15px;
+}
+.card{
+  background:#fff;
+  padding:20px;
+  border-radius:16px;
+  box-shadow:0 4px 18px #0001;
+}
+input,button{
+  width:100%;
+  padding:13px;
+  margin:7px 0;
+  box-sizing:border-box;
+  border-radius:10px;
+  border:1px solid #ddd;
+  font-size:16px;
+}
+button{
+  background:#2563eb;
+  color:#fff;
+  border:0;
+  font-weight:bold;
+  cursor:pointer;
+}
+button:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+}
+.out{
+  background:#d92d20;
+}
+#msg{
+  margin-top:12px;
+  padding:12px;
+  background:#eef4ff;
+  border-radius:10px;
+  white-space:pre-line;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>Messho SC</h1>
+  <div>Staff Attendance • Shift 09:30 AM–06:00 PM</div>
+</header>
+
+<main>
+<div class="card">
+
+<h2>Attendance</h2>
+
+<input
+  id="employeeId"
+  placeholder="Employee ID (e.g. EMP001)"
+  autocomplete="off"
+>
+
+<input
+  id="pin"
+  type="password"
+  placeholder="PIN"
+  autocomplete="off"
+>
+
+<button id="checkIn">🟢 Check In</button>
+<button id="checkOut" class="out">🔴 Check Out</button>
+
+<div id="msg">Enter Employee ID and PIN.</div>
+
+</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+/* =========================================
+   SUPABASE
+========================================= */
+
+const SUPABASE_URL =
+"https://iijuflktxqqtgjbdywwj.supabase.co";
+
+const SUPABASE_KEY =
+"sb_publishable_DPvuwTV2LgNOIeCR1XOGOQ_NyOMn0J0";
+
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+
+/* =========================================
+   OFFICE GPS SETTINGS
+========================================= */
+
+const OFFICE_LAT = 19.307765;
+const OFFICE_LNG = 73.071277;
+const OFFICE_RADIUS_METERS = 150;
+
+
+/* =========================================
+   COMPANY HOLIDAYS
+   Add dates here in YYYY-MM-DD format.
+   Example:
+   "2026-08-15",
+   "2026-08-27"
+========================================= */
+
+const COMPANY_HOLIDAYS = [
+  // Add company holiday dates here.
+];
+
+
+/* =========================================
+   ELEMENTS
+========================================= */
+
+const msg = document.getElementById("msg");
+const checkInButton = document.getElementById("checkIn");
+const checkOutButton = document.getElementById("checkOut");
+
+function message(text){
+  msg.textContent = text;
+}
+
+
+/* =========================================
+   INDIA DATE/TIME
+========================================= */
+
+function getIndiaDateTime(){
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    weekday: "long"
+  }).formatToParts(new Date());
+
+  const get = type => parts.find(p => p.type === type)?.value;
+
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    time: `${get("hour")}:${get("minute")}`,
+    weekday: get("weekday")
+  };
+}
+
+
+/* =========================================
+   DISTANCE CALCULATION
+========================================= */
+
+function distanceInMeters(lat1, lon1, lat2, lon2){
+
+  const R = 6371000;
+
+  const toRadians = value => value * Math.PI / 180;
+
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) *
+    Math.cos(toRadians(lat2)) *
+    Math.sin(dLon / 2) ** 2;
+
+  const c =
+    2 * Math.atan2(
+      Math.sqrt(a),
+      Math.sqrt(1 - a)
+    );
+
+  return R * c;
+}
+
+
+/* =========================================
+   GPS + OFFICE RADIUS
+========================================= */
+
+function getGPS(){
+
+  return new Promise((resolve,reject)=>{
+
+    if(!navigator.geolocation){
+      reject(new Error("This browser does not support GPS."));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+
+      position => {
+
+        const employeeLat = position.coords.latitude;
+        const employeeLng = position.coords.longitude;
+        const accuracy = position.coords.accuracy;
+
+        const distance = distanceInMeters(
+          employeeLat,
+          employeeLng,
+          OFFICE_LAT,
+          OFFICE_LNG
+        );
+
+        console.log("Employee Latitude:", employeeLat);
+        console.log("Employee Longitude:", employeeLng);
+        console.log("GPS Accuracy:", accuracy);
+        console.log("Distance from office:", distance);
+
+        if(distance > OFFICE_RADIUS_METERS){
+
+          reject(new Error(
+            "Attendance blocked ❌\n" +
+            "You are outside the office area.\n" +
+            "Distance: " + Math.round(distance) + " meters"
+          ));
+
+          return;
+        }
+
+        resolve({
+          latitude: employeeLat,
+          longitude: employeeLng,
+          accuracy: accuracy,
+          distance: Math.round(distance)
+        });
+
+      },
+
+      error => {
+
+        console.error("GPS Error:", error);
+
+        let text = "GPS location nahi mil rahi.";
+
+        if(error.code === 1){
+          text = "GPS permission Allow karo, phir dobara try karo.";
+        }else if(error.code === 2){
+          text = "GPS location unavailable. Phone ka Location ON karo.";
+        }else if(error.code === 3){
+          text = "GPS timeout. Location ON karke dobara try karo.";
+        }
+
+        reject(new Error(text));
+
+      },
+
+      {
+        enableHighAccuracy:true,
+        timeout:15000,
+        maximumAge:0
+      }
+
+    );
+  });
+}
+
+
+/* =========================================
+   WORKING-DAY CHECK
+========================================= */
+
+function isHoliday(date){
+  return COMPANY_HOLIDAYS.includes(date);
+}
+
+function isWeeklyOff(employee, weekday){
+
+  if(!employee.week_off) return false;
+
+  const off = String(employee.week_off).trim().toLowerCase();
+
+  return off === weekday.toLowerCase();
+}
+
+
+/* =========================================
+   ATTENDANCE
+========================================= */
+
+async function mark(type){
+
+  const id = document
+    .getElementById("employeeId")
+    .value
+    .trim()
+    .toUpperCase();
+
+  const pin = document
+    .getElementById("pin")
+    .value
+    .trim();
+
+  if(!id || !pin){
+    message("Employee ID aur PIN bharo.");
+    return;
+  }
+
+  checkInButton.disabled = true;
+  checkOutButton.disabled = true;
+
+  try{
+
+    message("Employee verify ho raha hai...");
+
+    const {
+      data: emp,
+      error: empError
+    } = await db
+      .from("employees")
+      .select("id,employee_id,name,pin,week_off,active")
+      .eq("employee_id",id)
+      .eq("pin",pin)
+      .eq("active",true)
+      .maybeSingle();
+
+    if(empError){
+      console.error(empError);
+      message("Database error: " + empError.message);
+      return;
+    }
+
+    if(!emp){
+      message("Employee ID/PIN incorrect.");
+      return;
+    }
+
+
+    /* =====================================
+       DATE / HOLIDAY / WEEKLY-OFF CHECK
+    ===================================== */
+
+    const now = getIndiaDateTime();
+
+    if(isHoliday(now.date)){
+      message(
+        "Aaj company holiday hai. 🛑\n" +
+        "Attendance allowed nahi hai."
+      );
+      return;
+    }
+
+    if(isWeeklyOff(emp, now.weekday)){
+      message(
+        "Aaj aapka weekly off hai. 🛑\n" +
+        "Attendance allowed nahi hai."
+      );
+      return;
+    }
+
+
+    /* =====================================
+       GPS CHECK
+    ===================================== */
+
+    message("GPS location verify ho rahi hai...");
+
+    const gps = await getGPS();
+
+    message("Office location verified ✅");
+
+
+    /* =====================================
+       CHECK IN
+    ===================================== */
+
+    if(type === "in"){
+
+      const {
+        data: existing,
+        error: findError
+      } = await db
+        .from("attendance")
+        .select("id,check_in,check_out")
+        .eq("employee_id",emp.id)
+        .eq("attendance_date",now.date)
+        .maybeSingle();
+
+      if(findError){
+        console.error(findError);
+        message("Attendance check error: " + findError.message);
+        return;
+      }
+
+      if(existing){
+        message(
+          "Aaj ka attendance already laga hua hai. ⚠️"
+        );
+        return;
+      }
+
+
+      const late =
+        (Number(now.time.slice(0,2)) > 9) ||
+        (
+          Number(now.time.slice(0,2)) === 9 &&
+          Number(now.time.slice(3,5)) > 30
+        );
+
+      const status = late ? "Late" : "Present";
+
+
+      const { error } = await db
+        .from("attendance")
+        .insert({
+
+          employee_id: emp.id,
+          attendance_date: now.date,
+          check_in: now.time,
+          status: status,
+
+          check_in_lat: gps.latitude,
+          check_in_lng: gps.longitude,
+          check_in_accuracy: gps.accuracy
+
+        });
+
+      if(error){
+        console.error(error);
+
+        if(
+          error.message &&
+          error.message.includes("attendance_employee_id_attendance_date_key")
+        ){
+          message(
+            "Aaj ka attendance already laga hua hai. ⚠️"
+          );
+        }else{
+          message("Check-In error: " + error.message);
+        }
+
+        return;
+      }
+
+      message(
+        "Check-In successful ✅\n" +
+        "Distance from office: " +
+        gps.distance +
+        " meters"
+      );
+
+    }
+
+
+    /* =====================================
+       CHECK OUT
+    ===================================== */
+
+    else{
+
+      const {
+        data: attendance,
+        error: findError
+      } = await db
+        .from("attendance")
+        .select("*")
+        .eq("employee_id",emp.id)
+        .eq("attendance_date",now.date)
+        .maybeSingle();
+
+      if(findError){
+        console.error(findError);
+        message("Attendance check error: " + findError.message);
+        return;
+      }
+
+      if(!attendance){
+        message("Aaj ka Check-In nahi mila.");
+        return;
+      }
+
+      if(attendance.check_out){
+        message("Check-Out already ho chuka hai.");
+        return;
+      }
+
+
+      const { error } = await db
+        .from("attendance")
+        .update({
+
+          check_out: now.time,
+
+          check_out_lat: gps.latitude,
+          check_out_lng: gps.longitude,
+          check_out_accuracy: gps.accuracy
+
+        })
+        .eq("id",attendance.id);
+
+      if(error){
+        console.error(error);
+        message("Check-Out error: " + error.message);
+        return;
+      }
+
+      message(
+        "Check-Out successful ✅\n" +
+        "Distance from office: " +
+        gps.distance +
+        " meters"
+      );
+    }
+
+  }
+  catch(error){
+
+    console.error(error);
+
+    message(
+      error.message ||
+      "Something went wrong."
+    );
+
+  }
+  finally{
+
+    checkInButton.disabled = false;
+    checkOutButton.disabled = false;
+
+  }
+}
+
+
+/* =========================================
+   BUTTON EVENTS
+========================================= */
+
+checkInButton.addEventListener(
+  "click",
+  () => mark("in")
+);
+
+checkOutButton.addEventListener(
+  "click",
+  () => mark("out")
+);
+
+</script>
+
+</body>
+</html>
+
