@@ -625,3 +625,22 @@ showDeviceId();
 </script>
 </body>
 </html>
+if(row.check_in_photo){
+  html += `
+    <div>
+      <b>Check-In Photo:</b><br>
+      <img src="${row.check_in_photo}"
+           style="width:100%;max-width:300px;border-radius:10px;margin-top:8px;">
+    </div>
+  `;
+}
+
+if(row.check_out_photo){
+  html += `
+    <div style="margin-top:10px;">
+      <b>Check-Out Photo:</b><br>
+      <img src="${row.check_out_photo}"
+           style="width:100%;max-width:300px;border-radius:10px;margin-top:8px;">
+    </div>
+  `;
+}
