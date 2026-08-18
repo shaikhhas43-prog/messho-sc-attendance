@@ -53,12 +53,56 @@ button:disabled{
 .out{
   background:#d92d20;
 }
+.attendanceBtn{
+  background:#172033;
+}
 #msg{
   margin-top:12px;
   padding:12px;
   background:#eef4ff;
   border-radius:10px;
   white-space:pre-line;
+}
+
+#myAttendance{
+  display:none;
+  margin-top:20px;
+}
+
+.employeeTitle{
+  font-size:18px;
+  font-weight:bold;
+  margin-bottom:12px;
+}
+
+.attendanceRow{
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  padding:13px;
+  margin:10px 0;
+  background:#fafafa;
+}
+
+.attendanceDate{
+  font-weight:bold;
+  margin-bottom:7px;
+}
+
+.statusPresent{
+  color:#16803c;
+  font-weight:bold;
+}
+
+.statusLate{
+  color:#b45309;
+  font-weight:bold;
+}
+
+.noData{
+  padding:15px;
+  background:#f8fafc;
+  border-radius:10px;
+  text-align:center;
 }
 </style>
 </head>
@@ -71,6 +115,7 @@ button:disabled{
 </header>
 
 <main>
+
 <div class="card">
 
 <h2>Attendance</h2>
@@ -89,16 +134,37 @@ button:disabled{
 >
 
 <button id="checkIn">🟢 Check In</button>
-<button id="checkOut" class="out">🔴 Check Out</button>
+
+<button id="checkOut" class="out">
+🔴 Check Out
+</button>
+
+<button id="myAttendanceBtn" class="attendanceBtn">
+📋 My Attendance
+</button>
 
 <div id="msg">Enter Employee ID and PIN.</div>
 
+<div id="myAttendance">
+
+  <div class="employeeTitle" id="employeeTitle">
+    My Attendance
+  </div>
+
+  <div id="attendanceList">
+    Loading...
+  </div>
+
 </div>
+
+</div>
+
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
+
 /* =========================================
    SUPABASE
 ========================================= */
@@ -116,7 +182,7 @@ const db = window.supabase.createClient(
 
 
 /* =========================================
-   OFFICE GPS SETTINGS
+   OFFICE GPS
 ========================================= */
 
 const OFFICE_LAT = 19.307765;
@@ -126,14 +192,11 @@ const OFFICE_RADIUS_METERS = 150;
 
 /* =========================================
    COMPANY HOLIDAYS
-   Add dates here in YYYY-MM-DD format.
-   Example:
-   "2026-08-15",
-   "2026-08-27"
 ========================================= */
 
 const COMPANY_HOLIDAYS = [
-  // Add company holiday dates here.
+  // "2026-08-15",
+  // "2026-08-27"
 ];
 
 
@@ -141,9 +204,27 @@ const COMPANY_HOLIDAYS = [
    ELEMENTS
 ========================================= */
 
-const msg = document.getElementById("msg");
-const checkInButton = document.getElementById("checkIn");
-const checkOutButton = document.getElementById("checkOut");
+const msg =
+document.getElementById("msg");
+
+const checkInButton =
+document.getElementById("checkIn");
+
+const checkOutButton =
+document.getElementById("checkOut");
+
+const myAttendanceBtn =
+document.getElementById("myAttendanceBtn");
+
+const myAttendance =
+document.getElementById("myAttendance");
+
+const attendanceList =
+document.getElementById("attendanceList");
+
+const employeeTitle =
+document.getElementById("employeeTitle");
+
 
 function message(text){
   msg.textContent = text;
@@ -155,39 +236,57 @@ function message(text){
 ========================================= */
 
 function getIndiaDateTime(){
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    weekday: "long"
-  }).formatToParts(new Date());
 
-  const get = type => parts.find(p => p.type === type)?.value;
+  const parts =
+    new Intl.DateTimeFormat("en-GB",{
+      timeZone:"Asia/Kolkata",
+      year:"numeric",
+      month:"2-digit",
+      day:"2-digit",
+      hour:"2-digit",
+      minute:"2-digit",
+      hour12:false,
+      weekday:"long"
+    }).formatToParts(new Date());
+
+  const get =
+    type =>
+      parts.find(p => p.type === type)?.value;
 
   return {
-    date: `${get("year")}-${get("month")}-${get("day")}`,
-    time: `${get("hour")}:${get("minute")}`,
-    weekday: get("weekday")
+    date:
+      `${get("year")}-${get("month")}-${get("day")}`,
+
+    time:
+      `${get("hour")}:${get("minute")}`,
+
+    weekday:
+      get("weekday")
   };
 }
 
 
 /* =========================================
-   DISTANCE CALCULATION
+   DISTANCE
 ========================================= */
 
-function distanceInMeters(lat1, lon1, lat2, lon2){
+function distanceInMeters(
+  lat1,
+  lon1,
+  lat2,
+  lon2
+){
 
   const R = 6371000;
 
-  const toRadians = value => value * Math.PI / 180;
+  const toRadians =
+    value => value * Math.PI / 180;
 
-  const dLat = toRadians(lat2 - lat1);
-  const dLon = toRadians(lon2 - lon1);
+  const dLat =
+    toRadians(lat2 - lat1);
+
+  const dLon =
+    toRadians(lon2 - lon1);
 
   const a =
     Math.sin(dLat / 2) ** 2 +
@@ -206,7 +305,7 @@ function distanceInMeters(lat1, lon1, lat2, lon2){
 
 
 /* =========================================
-   GPS + OFFICE RADIUS
+   GPS
 ========================================= */
 
 function getGPS(){
@@ -214,7 +313,13 @@ function getGPS(){
   return new Promise((resolve,reject)=>{
 
     if(!navigator.geolocation){
-      reject(new Error("This browser does not support GPS."));
+
+      reject(
+        new Error(
+          "This browser does not support GPS."
+        )
+      );
+
       return;
     }
 
@@ -222,54 +327,69 @@ function getGPS(){
 
       position => {
 
-        const employeeLat = position.coords.latitude;
-        const employeeLng = position.coords.longitude;
-        const accuracy = position.coords.accuracy;
+        const employeeLat =
+          position.coords.latitude;
 
-        const distance = distanceInMeters(
-          employeeLat,
-          employeeLng,
-          OFFICE_LAT,
-          OFFICE_LNG
-        );
+        const employeeLng =
+          position.coords.longitude;
 
-        console.log("Employee Latitude:", employeeLat);
-        console.log("Employee Longitude:", employeeLng);
-        console.log("GPS Accuracy:", accuracy);
-        console.log("Distance from office:", distance);
+        const accuracy =
+          position.coords.accuracy;
 
-        if(distance > OFFICE_RADIUS_METERS){
+        const distance =
+          distanceInMeters(
+            employeeLat,
+            employeeLng,
+            OFFICE_LAT,
+            OFFICE_LNG
+          );
 
-          reject(new Error(
-            "Attendance blocked ❌\n" +
-            "You are outside the office area.\n" +
-            "Distance: " + Math.round(distance) + " meters"
-          ));
+        if(
+          distance >
+          OFFICE_RADIUS_METERS
+        ){
+
+          reject(
+            new Error(
+              "Attendance blocked ❌\n" +
+              "You are outside the office area.\n" +
+              "Distance: " +
+              Math.round(distance) +
+              " meters"
+            )
+          );
 
           return;
         }
 
         resolve({
-          latitude: employeeLat,
-          longitude: employeeLng,
-          accuracy: accuracy,
-          distance: Math.round(distance)
+          latitude:employeeLat,
+          longitude:employeeLng,
+          accuracy:accuracy,
+          distance:Math.round(distance)
         });
 
       },
 
       error => {
 
-        console.error("GPS Error:", error);
-
-        let text = "GPS location nahi mil rahi.";
+        let text =
+          "GPS location nahi mil rahi.";
 
         if(error.code === 1){
-          text = "GPS permission Allow karo, phir dobara try karo.";
+
+          text =
+            "GPS permission Allow karo, phir dobara try karo.";
+
         }else if(error.code === 2){
-          text = "GPS location unavailable. Phone ka Location ON karo.";
+
+          text =
+            "GPS location unavailable. Phone ka Location ON karo.";
+
         }else if(error.code === 3){
-          text = "GPS timeout. Location ON karke dobara try karo.";
+
+          text =
+            "GPS timeout. Location ON karke dobara try karo.";
         }
 
         reject(new Error(text));
@@ -288,107 +408,163 @@ function getGPS(){
 
 
 /* =========================================
-   WORKING-DAY CHECK
+   WEEK OFF
 ========================================= */
 
 function isHoliday(date){
+
   return COMPANY_HOLIDAYS.includes(date);
+
 }
 
-function isWeeklyOff(employee, weekday){
 
-  if(!employee.week_off) return false;
+function isWeeklyOff(employee,weekday){
 
-  const off = String(employee.week_off).trim().toLowerCase();
+  if(!employee.week_off)
+    return false;
 
-  return off === weekday.toLowerCase();
+  const off =
+    String(employee.week_off)
+      .trim()
+      .toLowerCase();
+
+  return off ===
+    weekday.toLowerCase();
+
 }
 
 
 /* =========================================
-   ATTENDANCE
+   VERIFY EMPLOYEE
 ========================================= */
 
-async function mark(type){
+async function verifyEmployee(){
 
-  const id = document
-    .getElementById("employeeId")
-    .value
-    .trim()
-    .toUpperCase();
+  const id =
+    document
+      .getElementById("employeeId")
+      .value
+      .trim()
+      .toUpperCase();
 
-  const pin = document
-    .getElementById("pin")
-    .value
-    .trim();
+  const pin =
+    document
+      .getElementById("pin")
+      .value
+      .trim();
 
   if(!id || !pin){
-    message("Employee ID aur PIN bharo.");
-    return;
+
+    message(
+      "Employee ID aur PIN bharo."
+    );
+
+    return null;
   }
 
-  checkInButton.disabled = true;
-  checkOutButton.disabled = true;
 
-  try{
-
-    message("Employee verify ho raha hai...");
-
-    const {
-      data: emp,
-      error: empError
-    } = await db
+  const {
+    data:emp,
+    error
+  } =
+    await db
       .from("employees")
-      .select("id,employee_id,name,pin,week_off,active")
+      .select(
+        "id,employee_id,name,pin,week_off,active"
+      )
       .eq("employee_id",id)
       .eq("pin",pin)
       .eq("active",true)
       .maybeSingle();
 
-    if(empError){
-      console.error(empError);
-      message("Database error: " + empError.message);
+
+  if(error){
+
+    console.error(error);
+
+    message(
+      "Database error: " +
+      error.message
+    );
+
+    return null;
+  }
+
+
+  if(!emp){
+
+    message(
+      "Employee ID/PIN incorrect."
+    );
+
+    return null;
+  }
+
+
+  return emp;
+}
+
+
+/* =========================================
+   CHECK IN / OUT
+========================================= */
+
+async function mark(type){
+
+  checkInButton.disabled = true;
+  checkOutButton.disabled = true;
+  myAttendanceBtn.disabled = true;
+
+  try{
+
+    message(
+      "Employee verify ho raha hai..."
+    );
+
+    const emp =
+      await verifyEmployee();
+
+    if(!emp)
       return;
-    }
-
-    if(!emp){
-      message("Employee ID/PIN incorrect.");
-      return;
-    }
 
 
-    /* =====================================
-       DATE / HOLIDAY / WEEKLY-OFF CHECK
-    ===================================== */
+    const now =
+      getIndiaDateTime();
 
-    const now = getIndiaDateTime();
 
     if(isHoliday(now.date)){
+
       message(
         "Aaj company holiday hai. 🛑\n" +
         "Attendance allowed nahi hai."
       );
+
       return;
     }
 
-    if(isWeeklyOff(emp, now.weekday)){
+
+    if(
+      isWeeklyOff(
+        emp,
+        now.weekday
+      )
+    ){
+
       message(
         "Aaj aapka weekly off hai. 🛑\n" +
         "Attendance allowed nahi hai."
       );
+
       return;
     }
 
 
-    /* =====================================
-       GPS CHECK
-    ===================================== */
+    message(
+      "GPS location verify ho rahi hai..."
+    );
 
-    message("GPS location verify ho rahi hai...");
-
-    const gps = await getGPS();
-
-    message("Office location verified ✅");
+    const gps =
+      await getGPS();
 
 
     /* =====================================
@@ -398,70 +574,115 @@ async function mark(type){
     if(type === "in"){
 
       const {
-        data: existing,
-        error: findError
-      } = await db
-        .from("attendance")
-        .select("id,check_in,check_out")
-        .eq("employee_id",emp.id)
-        .eq("attendance_date",now.date)
-        .maybeSingle();
+        data:existing,
+        error:findError
+      } =
+        await db
+          .from("attendance")
+          .select(
+            "id,check_in,check_out"
+          )
+          .eq(
+            "employee_id",
+            emp.id
+          )
+          .eq(
+            "attendance_date",
+            now.date
+          )
+          .maybeSingle();
+
 
       if(findError){
-        console.error(findError);
-        message("Attendance check error: " + findError.message);
+
+        message(
+          "Attendance check error: " +
+          findError.message
+        );
+
         return;
       }
 
+
       if(existing){
+
         message(
           "Aaj ka attendance already laga hua hai. ⚠️"
         );
+
         return;
       }
 
 
+      const hour =
+        Number(now.time.slice(0,2));
+
+      const minute =
+        Number(now.time.slice(3,5));
+
+
       const late =
-        (Number(now.time.slice(0,2)) > 9) ||
+        hour > 9 ||
         (
-          Number(now.time.slice(0,2)) === 9 &&
-          Number(now.time.slice(3,5)) > 30
+          hour === 9 &&
+          minute > 30
         );
 
-      const status = late ? "Late" : "Present";
+
+      const status =
+        late ? "Late" : "Present";
 
 
-      const { error } = await db
-        .from("attendance")
-        .insert({
+      const {error} =
+        await db
+          .from("attendance")
+          .insert({
 
-          employee_id: emp.id,
-          attendance_date: now.date,
-          check_in: now.time,
-          status: status,
+            employee_id:emp.id,
 
-          check_in_lat: gps.latitude,
-          check_in_lng: gps.longitude,
-          check_in_accuracy: gps.accuracy
+            attendance_date:now.date,
 
-        });
+            check_in:now.time,
+
+            status:status,
+
+            check_in_lat:
+              gps.latitude,
+
+            check_in_lng:
+              gps.longitude,
+
+            check_in_accuracy:
+              gps.accuracy
+
+          });
+
 
       if(error){
-        console.error(error);
 
         if(
           error.message &&
-          error.message.includes("attendance_employee_id_attendance_date_key")
+          error.message.includes(
+            "attendance_employee_id_attendance_date_key"
+          )
         ){
+
           message(
             "Aaj ka attendance already laga hua hai. ⚠️"
           );
+
         }else{
-          message("Check-In error: " + error.message);
+
+          message(
+            "Check-In error: " +
+            error.message
+          );
+
         }
 
         return;
       }
+
 
       message(
         "Check-In successful ✅\n" +
@@ -480,50 +701,87 @@ async function mark(type){
     else{
 
       const {
-        data: attendance,
-        error: findError
-      } = await db
-        .from("attendance")
-        .select("*")
-        .eq("employee_id",emp.id)
-        .eq("attendance_date",now.date)
-        .maybeSingle();
+        data:attendance,
+        error:findError
+      } =
+        await db
+          .from("attendance")
+          .select("*")
+          .eq(
+            "employee_id",
+            emp.id
+          )
+          .eq(
+            "attendance_date",
+            now.date
+          )
+          .maybeSingle();
+
 
       if(findError){
-        console.error(findError);
-        message("Attendance check error: " + findError.message);
+
+        message(
+          "Attendance check error: " +
+          findError.message
+        );
+
         return;
       }
+
 
       if(!attendance){
-        message("Aaj ka Check-In nahi mila.");
+
+        message(
+          "Aaj ka Check-In nahi mila."
+        );
+
         return;
       }
+
 
       if(attendance.check_out){
-        message("Check-Out already ho chuka hai.");
+
+        message(
+          "Check-Out already ho chuka hai."
+        );
+
         return;
       }
 
 
-      const { error } = await db
-        .from("attendance")
-        .update({
+      const {error} =
+        await db
+          .from("attendance")
+          .update({
 
-          check_out: now.time,
+            check_out:now.time,
 
-          check_out_lat: gps.latitude,
-          check_out_lng: gps.longitude,
-          check_out_accuracy: gps.accuracy
+            check_out_lat:
+              gps.latitude,
 
-        })
-        .eq("id",attendance.id);
+            check_out_lng:
+              gps.longitude,
+
+            check_out_accuracy:
+              gps.accuracy
+
+          })
+          .eq(
+            "id",
+            attendance.id
+          );
+
 
       if(error){
-        console.error(error);
-        message("Check-Out error: " + error.message);
+
+        message(
+          "Check-Out error: " +
+          error.message
+        );
+
         return;
       }
+
 
       message(
         "Check-Out successful ✅\n" +
@@ -534,6 +792,7 @@ async function mark(type){
     }
 
   }
+
   catch(error){
 
     console.error(error);
@@ -544,10 +803,149 @@ async function mark(type){
     );
 
   }
+
   finally{
 
     checkInButton.disabled = false;
     checkOutButton.disabled = false;
+    myAttendanceBtn.disabled = false;
+
+  }
+}
+
+
+/* =========================================
+   MY ATTENDANCE
+========================================= */
+
+async function showMyAttendance(){
+
+  try{
+
+    attendanceList.innerHTML =
+      "Loading attendance...";
+
+    myAttendance.style.display =
+      "block";
+
+
+    const emp =
+      await verifyEmployee();
+
+
+    if(!emp){
+
+      attendanceList.innerHTML =
+        "Employee ID/PIN incorrect.";
+
+      return;
+    }
+
+
+    employeeTitle.textContent =
+      "📋 " +
+      emp.name +
+      " (" +
+      emp.employee_id +
+      ")";
+
+
+    const {
+      data,
+      error
+    } =
+      await db
+        .from("attendance")
+        .select(
+          "attendance_date,check_in,check_out,status"
+        )
+        .eq(
+          "employee_id",
+          emp.id
+        )
+        .order(
+          "attendance_date",
+          {ascending:false}
+        );
+
+
+    if(error){
+
+      console.error(error);
+
+      attendanceList.innerHTML =
+        "Attendance load error: " +
+        error.message;
+
+      return;
+    }
+
+
+    if(!data || data.length === 0){
+
+      attendanceList.innerHTML =
+        '<div class="noData">' +
+        'Abhi attendance record nahi mila.' +
+        '</div>';
+
+      return;
+    }
+
+
+    attendanceList.innerHTML =
+      data.map(row => {
+
+        let statusClass =
+          "statusPresent";
+
+        if(
+          String(row.status)
+            .toLowerCase()
+            .includes("late")
+        ){
+
+          statusClass =
+            "statusLate";
+        }
+
+
+        return `
+          <div class="attendanceRow">
+
+            <div class="attendanceDate">
+              📅 ${row.attendance_date}
+            </div>
+
+            <div>
+              Status:
+              <span class="${statusClass}">
+                ${row.status || "-"}
+              </span>
+            </div>
+
+            <div>
+              🟢 Check-In:
+              ${row.check_in || "-"}
+            </div>
+
+            <div>
+              🔴 Check-Out:
+              ${row.check_out || "-"}
+            </div>
+
+          </div>
+        `;
+
+      }).join("");
+
+
+  }
+  catch(error){
+
+    console.error(error);
+
+    attendanceList.innerHTML =
+      "Something went wrong.";
 
   }
 }
@@ -567,8 +965,12 @@ checkOutButton.addEventListener(
   () => mark("out")
 );
 
+myAttendanceBtn.addEventListener(
+  "click",
+  showMyAttendance
+);
+
 </script>
 
 </body>
 </html>
-
