@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -13,23 +14,27 @@ body{
   background:#f5f7fb;
   color:#172033;
 }
+
 header{
   background:#172033;
-  color:white;
+  color:#fff;
   padding:20px;
 }
+
 main{
   max-width:650px;
   margin:25px auto;
   padding:0 15px;
 }
+
 .card{
-  background:white;
+  background:#fff;
   padding:20px;
   border-radius:16px;
   box-shadow:0 4px 18px #0001;
   margin-bottom:18px;
 }
+
 input,button{
   width:100%;
   padding:13px;
@@ -39,51 +44,63 @@ input,button{
   border:1px solid #ddd;
   font-size:16px;
 }
+
 button{
   background:#2563eb;
-  color:white;
+  color:#fff;
   border:0;
   font-weight:bold;
 }
+
 button:disabled{
   opacity:.6;
 }
+
 .out{
   background:#d92d20;
 }
+
 .secondary{
   background:#172033;
 }
-#msg,#reportMsg{
+
+#msg,
+#reportMsg{
   margin-top:12px;
   padding:12px;
   background:#eef4ff;
   border-radius:10px;
   white-space:pre-line;
 }
+
 #reportCard{
   display:none;
 }
+
 .employeeName{
   font-weight:bold;
   font-size:18px;
   margin-bottom:12px;
 }
+
 table{
   width:100%;
   border-collapse:collapse;
   margin-top:12px;
   font-size:14px;
 }
+
 th,td{
   padding:10px 6px;
   border-bottom:1px solid #eee;
   text-align:left;
 }
+
 th{
   background:#f5f7fb;
 }
 </style>
+
 </head>
 
 <body>
@@ -99,24 +116,34 @@ th{
 
 <h2>Attendance</h2>
 
-<input id="employeeId"
-placeholder="Employee ID (e.g. EMP001)"
-autocomplete="off">
+<input
+  id="employeeId"
+  placeholder="Employee ID (e.g. EMP001)"
+  autocomplete="off"
+>
 
-<input id="pin"
-type="password"
-placeholder="PIN"
-autocomplete="off">
+<input
+  id="pin"
+  type="password"
+  placeholder="PIN"
+  autocomplete="off"
+>
 
-<button id="checkIn">🟢 Check In</button>
+<button id="checkIn">
+🟢 Check In
+</button>
 
-<button id="checkOut" class="out">🔴 Check Out</button>
+<button id="checkOut" class="out">
+🔴 Check Out
+</button>
 
 <button id="myAttendance" class="secondary">
 📋 My Attendance
 </button>
 
-<div id="msg">Enter Employee ID and PIN.</div>
+<div id="msg">
+Enter Employee ID and PIN.
+</div>
 
 </div>
 
@@ -127,7 +154,9 @@ autocomplete="off">
 
 <div id="employeeName" class="employeeName"></div>
 
-<div id="reportMsg">Loading...</div>
+<div id="reportMsg">
+Loading...
+</div>
 
 <table id="reportTable">
 
@@ -149,11 +178,13 @@ autocomplete="off">
 </main>
 
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
 
-/* ================================
+/* =========================================
    SUPABASE
-================================ */
+========================================= */
 
 const SUPABASE_URL =
 "https://iijuflktxqqtgjbdywwj.supabase.co";
@@ -161,38 +192,58 @@ const SUPABASE_URL =
 const SUPABASE_KEY =
 "sb_publishable_DPvuwTV2LgNOIeCR1XOGOQ_NyOMn0J0";
 
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
 
-/* ================================
+
+/* =========================================
    OFFICE GPS
-================================ */
+========================================= */
 
 const OFFICE_LAT = 19.307765;
 const OFFICE_LNG = 73.071277;
+
 const OFFICE_RADIUS_METERS = 150;
 
 
-/* ================================
+/* =========================================
    HOLIDAYS
-================================ */
+========================================= */
 
 const COMPANY_HOLIDAYS = [
   // "2026-08-15"
 ];
 
 
-/* ================================
+/* =========================================
    ELEMENTS
-================================ */
+========================================= */
 
-const msg = document.getElementById("msg");
-const checkInButton = document.getElementById("checkIn");
-const checkOutButton = document.getElementById("checkOut");
-const myAttendanceButton = document.getElementById("myAttendance");
+const msg =
+document.getElementById("msg");
 
-const reportCard = document.getElementById("reportCard");
-const employeeName = document.getElementById("employeeName");
-const reportMsg = document.getElementById("reportMsg");
-const reportBody = document.querySelector("#reportTable tbody");
+const checkInButton =
+document.getElementById("checkIn");
+
+const checkOutButton =
+document.getElementById("checkOut");
+
+const myAttendanceButton =
+document.getElementById("myAttendance");
+
+const reportCard =
+document.getElementById("reportCard");
+
+const employeeName =
+document.getElementById("employeeName");
+
+const reportMsg =
+document.getElementById("reportMsg");
+
+const reportBody =
+document.querySelector("#reportTable tbody");
 
 
 function message(text){
@@ -200,63 +251,36 @@ function message(text){
 }
 
 
-/* ================================
-   SUPABASE REST REQUEST
-================================ */
+/* =========================================
+   DEVICE ID
+========================================= */
 
-async function supabaseRequest(
-  path,
-  options = {}
-){
-
-  const headers = {
-    "apikey": SUPABASE_KEY,
-    "Authorization": "Bearer " + SUPABASE_KEY,
-    "Content-Type": "application/json",
-    ...(options.headers || {})
-  };
-
-  const response = await fetch(
-    SUPABASE_URL + path,
-    {
-      ...options,
-      headers:headers
-    }
-  );
-
-  const text = await response.text();
-
-  let data = null;
+function getDeviceId(){
 
   try{
-    data = text ? JSON.parse(text) : null;
-  }catch(e){
-    data = text;
+
+    if(
+      window.AndroidDevice &&
+      typeof window.AndroidDevice.getDeviceId === "function"
+    ){
+
+      return window.AndroidDevice.getDeviceId();
+
+    }
+
+  }catch(error){
+
+    console.error("Device ID error:",error);
+
   }
 
-  if(!response.ok){
-
-    let errorText =
-      data?.message ||
-      data?.error_description ||
-      data?.hint ||
-      data?.details ||
-      data?.error ||
-      text ||
-      "Supabase request failed.";
-
-    throw new Error(
-      response.status + ": " + errorText
-    );
-  }
-
-  return data;
+  return "";
 }
 
 
-/* ================================
-   INDIA DATE / TIME
-================================ */
+/* =========================================
+   INDIA DATE/TIME
+========================================= */
 
 function getIndiaDateTime(){
 
@@ -275,13 +299,13 @@ function getIndiaDateTime(){
       }
     ).formatToParts(new Date());
 
-  const get =
-    type =>
-      parts.find(
-        p => p.type === type
-      )?.value;
+  const get = type =>
+    parts.find(
+      p => p.type === type
+    )?.value;
 
   return {
+
     date:
       `${get("year")}-${get("month")}-${get("day")}`,
 
@@ -290,13 +314,14 @@ function getIndiaDateTime(){
 
     weekday:
       get("weekday")
+
   };
 }
 
 
-/* ================================
+/* =========================================
    DISTANCE
-================================ */
+========================================= */
 
 function distanceInMeters(
   lat1,
@@ -334,9 +359,9 @@ function distanceInMeters(
 }
 
 
-/* ================================
+/* =========================================
    GPS
-================================ */
+========================================= */
 
 function getGPS(){
 
@@ -396,11 +421,8 @@ function getGPS(){
           resolve({
 
             latitude:lat,
-
             longitude:lng,
-
             accuracy:accuracy,
-
             distance:Math.round(distance)
 
           });
@@ -440,6 +462,7 @@ function getGPS(){
                 "GPS location nahi mil rahi."
               )
             );
+
           }
 
         },
@@ -457,11 +480,35 @@ function getGPS(){
 }
 
 
-/* ================================
-   GET EMPLOYEE
-================================ */
+/* =========================================
+   HOLIDAY / WEEK OFF
+========================================= */
 
-async function getEmployee(){
+function isHoliday(date){
+
+  return COMPANY_HOLIDAYS.includes(date);
+
+}
+
+
+function isWeeklyOff(employee,weekday){
+
+  if(!employee.week_off)
+    return false;
+
+  return String(employee.week_off)
+    .trim()
+    .toLowerCase() ===
+    weekday.toLowerCase();
+
+}
+
+
+/* =========================================
+   EMPLOYEE LOGIN
+========================================= */
+
+async function verifyEmployee(){
 
   const id =
     document
@@ -478,69 +525,126 @@ async function getEmployee(){
 
   if(!id || !pin){
 
-    throw new Error(
+    message(
       "Employee ID aur PIN bharo."
     );
+
+    return null;
   }
 
-  const query =
-    "/rest/v1/employees" +
-    "?select=id,employee_id,name,pin,week_off,active" +
-    "&employee_id=eq." +
-    encodeURIComponent(id) +
-    "&pin=eq." +
-    encodeURIComponent(pin) +
-    "&active=eq.true" +
-    "&limit=1";
 
-  const data =
-    await supabaseRequest(query);
+  const {
+    data:emp,
+    error
+  } = await db
+    .from("employees")
+    .select(
+      "id,employee_id,name,pin,week_off,active,device_id"
+    )
+    .eq("employee_id",id)
+    .eq("pin",pin)
+    .eq("active",true)
+    .maybeSingle();
 
-  if(!data || data.length === 0){
 
-    throw new Error(
+  if(error){
+
+    console.error(error);
+
+    message(
+      "Database error: " +
+      error.message
+    );
+
+    return null;
+  }
+
+
+  if(!emp){
+
+    message(
       "Employee ID/PIN incorrect."
     );
+
+    return null;
   }
 
-  return data[0];
+
+  /* =====================================
+     DEVICE BINDING
+  ===================================== */
+
+  const currentDevice =
+    getDeviceId();
+
+
+  if(!currentDevice){
+
+    message(
+      "Device ID nahi mil raha.\n" +
+      "APK se attendance use karo."
+    );
+
+    return null;
+  }
+
+
+  /*
+   * First successful device becomes
+   * the employee's registered device.
+   */
+
+  if(!emp.device_id){
+
+    const {
+      error:bindError
+    } = await db
+      .from("employees")
+      .update({
+        device_id:currentDevice
+      })
+      .eq("id",emp.id);
+
+
+    if(bindError){
+
+      console.error(bindError);
+
+      message(
+        "Device binding error: " +
+        bindError.message
+      );
+
+      return null;
+    }
+
+  }else if(
+    emp.device_id !== currentDevice
+  ){
+
+    message(
+      "Attendance blocked ❌\n\n" +
+      "Ye Employee ID kisi doosre phone " +
+      "se already linked hai.\n\n" +
+      "Apne registered phone se hi attendance lagao."
+    );
+
+    return null;
+  }
+
+
+  return emp;
 }
 
 
-/* ================================
-   WEEK OFF
-================================ */
-
-function isWeeklyOff(
-  employee,
-  weekday
-){
-
-  if(!employee.week_off){
-    return false;
-  }
-
-  return String(
-    employee.week_off
-  )
-  .trim()
-  .toLowerCase()
-  ===
-  String(weekday)
-  .trim()
-  .toLowerCase();
-}
-
-
-/* ================================
-   CHECK IN / OUT
-================================ */
+/* =========================================
+   MARK ATTENDANCE
+========================================= */
 
 async function mark(type){
 
   checkInButton.disabled = true;
   checkOutButton.disabled = true;
-  myAttendanceButton.disabled = true;
 
   try{
 
@@ -548,73 +652,96 @@ async function mark(type){
       "Employee verify ho raha hai..."
     );
 
-    const employee =
-      await getEmployee();
+
+    const emp =
+      await verifyEmployee();
+
+
+    if(!emp)
+      return;
+
 
     const now =
       getIndiaDateTime();
 
 
-    /* HOLIDAY */
+    if(isHoliday(now.date)){
 
-    if(
-      COMPANY_HOLIDAYS
-        .includes(now.date)
-    ){
-
-      throw new Error(
+      message(
         "Aaj company holiday hai. 🛑"
       );
+
+      return;
     }
 
 
-    /* WEEK OFF */
-
     if(
       isWeeklyOff(
-        employee,
+        emp,
         now.weekday
       )
     ){
 
-      throw new Error(
+      message(
         "Aaj aapka weekly off hai. 🛑"
       );
+
+      return;
     }
 
-
-    /* GPS */
 
     message(
       "GPS location verify ho rahi hai..."
     );
 
+
     const gps =
       await getGPS();
 
 
-    /* ============================
+    /* =====================================
        CHECK IN
-    ============================ */
+    ===================================== */
 
     if(type === "in"){
 
-      const existing =
-        await supabaseRequest(
-          "/rest/v1/attendance" +
-          "?select=id,check_in,check_out" +
-          "&employee_id=eq." +
-          encodeURIComponent(employee.id) +
-          "&attendance_date=eq." +
-          encodeURIComponent(now.date) +
-          "&limit=1"
+      const {
+        data:existing,
+        error:findError
+      } = await db
+        .from("attendance")
+        .select(
+          "id,check_in,check_out"
+        )
+        .eq(
+          "employee_id",
+          emp.id
+        )
+        .eq(
+          "attendance_date",
+          now.date
+        )
+        .maybeSingle();
+
+
+      if(findError){
+
+        message(
+          "Attendance check error: " +
+          findError.message
         );
 
-      if(existing && existing.length){
+        return;
+      }
 
-        throw new Error(
+
+      if(existing){
+
+        message(
           "Aaj ka attendance already laga hua hai. ⚠️"
         );
+
+        return;
       }
 
 
@@ -628,6 +755,7 @@ async function mark(type){
           now.time.slice(3,5)
         );
 
+
       const late =
         hour > 9 ||
         (
@@ -635,55 +763,70 @@ async function mark(type){
           minute > 30
         );
 
+
       const status =
-        late
-          ? "Late"
-          : "Present";
+        late ? "Late" : "Present";
 
 
-      await supabaseRequest(
-        "/rest/v1/attendance",
-        {
-          method:"POST",
+      const {
+        error
+      } = await db
+        .from("attendance")
+        .insert({
 
-          headers:{
-            "Prefer":"return=minimal"
-          },
+          employee_id:emp.id,
 
-          body:JSON.stringify({
+          attendance_date:
+            now.date,
 
-            employee_id:
-              employee.id,
+          check_in:
+            now.time,
 
-            attendance_date:
-              now.date,
+          status:status,
 
-            check_in:
-              now.time,
+          check_in_lat:
+            gps.latitude,
 
-            status:
-              status,
+          check_in_lng:
+            gps.longitude,
 
-            check_in_lat:
-              gps.latitude,
+          check_in_accuracy:
+            gps.accuracy
 
-            check_in_lng:
-              gps.longitude,
+        });
 
-            check_in_accuracy:
-              gps.accuracy
 
-          })
+      if(error){
+
+        console.error(error);
+
+        if(
+          error.message &&
+          error.message.includes(
+            "attendance_employee_id_attendance_date_key"
+          )
+        ){
+
+          message(
+            "Aaj ka attendance already laga hua hai. ⚠️"
+          );
+
+        }else{
+
+          message(
+            "Check-In error: " +
+            error.message
+          );
+
         }
-      );
+
+        return;
+      }
 
 
       message(
         "Check-In successful ✅\n" +
-        "Employee: " +
-        employee.name +
-        "\n" +
-        "Distance: " +
+        "Distance from office: " +
         gps.distance +
         " meters"
       );
@@ -691,90 +834,106 @@ async function mark(type){
     }
 
 
-    /* ============================
+    /* =====================================
        CHECK OUT
-    ============================ */
+    ===================================== */
 
     else{
 
-      const attendance =
-        await supabaseRequest(
-          "/rest/v1/attendance" +
-          "?select=*" +
-          "&employee_id=eq." +
-          encodeURIComponent(employee.id) +
-          "&attendance_date=eq." +
-          encodeURIComponent(now.date) +
-          "&limit=1"
+      const {
+        data:attendance,
+        error:findError
+      } = await db
+        .from("attendance")
+        .select("*")
+        .eq(
+          "employee_id",
+          emp.id
+        )
+        .eq(
+          "attendance_date",
+          now.date
+        )
+        .maybeSingle();
+
+
+      if(findError){
+
+        message(
+          "Attendance check error: " +
+          findError.message
         );
 
-      if(
-        !attendance ||
-        !attendance.length
-      ){
+        return;
+      }
 
-        throw new Error(
+
+      if(!attendance){
+
+        message(
           "Aaj ka Check-In nahi mila."
         );
+
+        return;
       }
 
 
-      const row =
-        attendance[0];
+      if(attendance.check_out){
 
-
-      if(row.check_out){
-
-        throw new Error(
+        message(
           "Check-Out already ho chuka hai."
         );
+
+        return;
       }
 
 
-      await supabaseRequest(
-        "/rest/v1/attendance" +
-        "?id=eq." +
-        encodeURIComponent(row.id),
-        {
-          method:"PATCH",
+      const {
+        error
+      } = await db
+        .from("attendance")
+        .update({
 
-          headers:{
-            "Prefer":"return=minimal"
-          },
+          check_out:
+            now.time,
 
-          body:JSON.stringify({
+          check_out_lat:
+            gps.latitude,
 
-            check_out:
-              now.time,
+          check_out_lng:
+            gps.longitude,
 
-            check_out_lat:
-              gps.latitude,
+          check_out_accuracy:
+            gps.accuracy
 
-            check_out_lng:
-              gps.longitude,
+        })
+        .eq(
+          "id",
+          attendance.id
+        );
 
-            check_out_accuracy:
-              gps.accuracy
 
-          })
-        }
-      );
+      if(error){
+
+        message(
+          "Check-Out error: " +
+          error.message
+        );
+
+        return;
+      }
 
 
       message(
         "Check-Out successful ✅\n" +
-        "Employee: " +
-        employee.name +
-        "\n" +
-        "Distance: " +
+        "Distance from office: " +
         gps.distance +
         " meters"
       );
 
     }
 
-  }
-  catch(error){
+  }catch(error){
 
     console.error(error);
 
@@ -783,147 +942,140 @@ async function mark(type){
       "Something went wrong."
     );
 
-  }
-  finally{
+  }finally{
 
     checkInButton.disabled = false;
     checkOutButton.disabled = false;
-    myAttendanceButton.disabled = false;
 
   }
 
 }
 
 
-/* ================================
+/* =========================================
    MY ATTENDANCE
-================================ */
+========================================= */
 
 async function showMyAttendance(){
 
-  reportCard.style.display = "block";
+  reportCard.style.display =
+    "block";
+
+  reportMsg.textContent =
+    "Employee verify ho raha hai...";
+
+  reportBody.innerHTML = "";
+
+
+  const emp =
+    await verifyEmployee();
+
+
+  if(!emp){
+
+    reportMsg.textContent =
+      "Employee verify nahi hua.";
+
+    return;
+  }
+
+
+  employeeName.textContent =
+    emp.name +
+    " (" +
+    emp.employee_id +
+    ")";
+
 
   reportMsg.textContent =
     "Attendance load ho rahi hai...";
 
-  reportBody.innerHTML = "";
 
-  myAttendanceButton.disabled = true;
-
-  try{
-
-    const employee =
-      await getEmployee();
-
-
-    employeeName.textContent =
-      employee.name +
-      " • " +
-      employee.employee_id;
-
-
-    /*
-      RPC FUNCTION:
-      get_my_attendance(employee_id, pin)
-    */
-
-    const data =
-      await supabaseRequest(
-        "/rest/v1/rpc/get_my_attendance",
-        {
-          method:"POST",
-
-          body:JSON.stringify({
-
-            p_employee_id:
-              employee.employee_id,
-
-            p_pin:
-              employee.pin
-
-          })
-        }
-      );
+  const {
+    data,
+    error
+  } = await db
+    .from("attendance_report")
+    .select(
+      "attendance_date,check_in,check_out,status"
+    )
+    .eq(
+      "employee_id",
+      emp.employee_id
+    )
+    .order(
+      "attendance_date",
+      {
+        ascending:false
+      }
+    );
 
 
-    reportBody.innerHTML = "";
-
-
-    if(!data || !data.length){
-
-      reportMsg.textContent =
-        "Abhi koi attendance record nahi mila.";
-
-      return;
-    }
-
-
-    reportMsg.textContent =
-      data.length +
-      " attendance records mile.";
-
-
-    data.forEach(row => {
-
-      const tr =
-        document.createElement("tr");
-
-
-      tr.innerHTML =
-
-        "<td>" +
-        (row.attendance_date || "") +
-        "</td>" +
-
-        "<td>" +
-        (row.check_in || "-") +
-        "</td>" +
-
-        "<td>" +
-        (row.check_out || "-") +
-        "</td>" +
-
-        "<td>" +
-        (row.status || "-") +
-        "</td>";
-
-
-      reportBody.appendChild(tr);
-
-    });
-
-  }
-  catch(error){
+  if(error){
 
     console.error(error);
 
     reportMsg.textContent =
-      "Attendance load nahi hui.\n" +
+      "Report error: " +
       error.message;
 
+    return;
   }
-  finally{
 
-    myAttendanceButton.disabled = false;
 
+  reportBody.innerHTML = "";
+
+
+  if(!data || data.length === 0){
+
+    reportMsg.textContent =
+      "Abhi attendance record nahi mila.";
+
+    return;
   }
+
+
+  reportMsg.textContent =
+    data.length +
+    " attendance record found.";
+
+
+  data.forEach(row => {
+
+    const tr =
+      document.createElement("tr");
+
+
+    tr.innerHTML = `
+      <td>${row.attendance_date || "-"}</td>
+      <td>${row.check_in || "-"}</td>
+      <td>${row.check_out || "-"}</td>
+      <td>${row.status || "-"}</td>
+    `;
+
+
+    reportBody.appendChild(tr);
+
+  });
 
 }
 
 
-/* ================================
+/* =========================================
    BUTTONS
-================================ */
+========================================= */
 
 checkInButton.addEventListener(
   "click",
   () => mark("in")
 );
 
+
 checkOutButton.addEventListener(
   "click",
   () => mark("out")
 );
+
 
 myAttendanceButton.addEventListener(
   "click",
