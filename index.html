@@ -1,17 +1,1352 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Messho SC Attendance</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;background:#f5f7fb;color:#172033}header{background:#172033;color:#fff;padding:20px}header h1{margin:0 0 6px}main{max-width:650px;margin:25px auto;padding:0 15px}.card{background:#fff;padding:20px;border-radius:16px;box-shadow:0 4px 18px #0001;margin-bottom:18px}input,button{width:100%;padding:13px;margin:7px 0;border-radius:10px;border:1px solid #ddd;font-size:16px}button{background:#2563eb;color:#fff;border:0;font-weight:bold}button:disabled{opacity:.6}.out{background:#d92d20}.secondary{background:#172033}#msg,#reportMsg{margin-top:12px;padding:12px;background:#eef4ff;border-radius:10px;white-space:pre-line}#reportCard{display:none}.employeeName{font-weight:bold;font-size:18px;margin-bottom:12px}table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}th,td{padding:10px 6px;border-bottom:1px solid #eee;text-align:left}th{background:#f5f7fb}#cameraModal{display:none;position:fixed;inset:0;background:#000b;z-index:9999;padding:15px}.cameraBox{max-width:600px;margin:20px auto;background:#fff;border-radius:16px;padding:15px}#cameraVideo,#photoPreview{width:100%;display:block;border-radius:12px;background:#000;aspect-ratio:4/3;object-fit:cover}#photoPreview{display:none;margin-top:10px}.cameraButtons{display:flex;gap:8px}.cameraButtons button{margin:8px 0 0}.cancelBtn{background:#172033}.small{color:#666;font-size:13px;margin-top:8px}</style></head><body><header><h1>Messho SC</h1><div>Staff Attendance â€¢ Shift 09:30 AMâ€“06:00 PM</div></header><main><div class="card"><h2>Attendance</h2><input id="employeeId" placeholder="Employee ID (e.g. EMP001)" autocomplete="off"><input id="pin" type="password" placeholder="PIN" autocomplete="off"><button id="checkIn">ðŸŸ¢ Check In</button><button id="checkOut" class="out">ðŸ”´ Check Out</button><button id="myAttendance" class="secondary">ðŸ“‹ My Attendance</button><div id="msg">Enter Employee ID and PIN.</div></div><div class="card" id="reportCard"><h2>ðŸ“‹ My Attendance</h2><div id="employeeName" class="employeeName"></div><div id="reportMsg">Loading...</div><table><thead><tr><th>Date</th><th>Check In</th><th>Check Out</th><th>Status</th></tr></thead><tbody id="reportBody"></tbody></table></div></main><div id="cameraModal"><div class="cameraBox"><h3 id="cameraTitle">ðŸ“¸ Take Selfie</h3><video id="cameraVideo" autoplay playsinline></video><canvas id="cameraCanvas" style="display:none"></canvas><img id="photoPreview" alt="Selfie preview"><div class="cameraButtons"><button id="capturePhoto">ðŸ“¸ Capture</button><button id="retakePhoto" style="display:none">ðŸ”„ Retake</button><button id="usePhoto" style="display:none">âœ… Use Photo</button><button id="cancelCamera" class="cancelBtn">Cancel</button></div><div class="small">Camera permission Allow karein.</div></div></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
-const SUPABASE_URL="https://iijuflktxqqtgjbdywwj.supabase.co";const SUPABASE_KEY="sb_publishable_DPvuwTV2LgNOIeCR1XOGOQ_NyOMn0J0";const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-const OFFICE_LAT=19.307765,OFFICE_LNG=73.071277,OFFICE_RADIUS_METERS=150;const COMPANY_HOLIDAYS=[];
-const msg=document.getElementById("msg"),checkInButton=document.getElementById("checkIn"),checkOutButton=document.getElementById("checkOut"),reportCard=document.getElementById("reportCard"),employeeName=document.getElementById("employeeName"),reportMsg=document.getElementById("reportMsg"),reportBody=document.getElementById("reportBody");
-const cameraModal=document.getElementById("cameraModal"),cameraVideo=document.getElementById("cameraVideo"),cameraCanvas=document.getElementById("cameraCanvas"),photoPreview=document.getElementById("photoPreview"),cameraTitle=document.getElementById("cameraTitle"),capturePhoto=document.getElementById("capturePhoto"),retakePhoto=document.getElementById("retakePhoto"),usePhoto=document.getElementById("usePhoto"),cancelCamera=document.getElementById("cancelCamera");let stream=null,capturedPhoto="",pendingType=null;
-function message(t){msg.textContent=t}function getIndiaDateTime(){const p=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false,weekday:"long"}).formatToParts(new Date());const g=t=>p.find(x=>x.type===t)?.value;return{date:`${g("year")}-${g("month")}-${g("day")}`,time:`${g("hour")}:${g("minute")}`,weekday:g("weekday")}}function distanceInMeters(a,b,c,d){const R=6371000,r=x=>x*Math.PI/180,A=r(c-a),B=r(d-b),x=Math.sin(A/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(B/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))}
-function getGPS(){return new Promise((resolve,reject)=>{if(!navigator.geolocation)return reject(new Error("Is device par GPS available nahi hai."));navigator.geolocation.getCurrentPosition(p=>{const lat=p.coords.latitude,lng=p.coords.longitude,accuracy=p.coords.accuracy,distance=distanceInMeters(lat,lng,OFFICE_LAT,OFFICE_LNG);if(distance>OFFICE_RADIUS_METERS)return reject(new Error("Attendance blocked âŒ\nAap office area se bahar ho.\nDistance: "+Math.round(distance)+" meters"));resolve({latitude:lat,longitude:lng,accuracy,distance:Math.round(distance)})},e=>reject(new Error(e.code===1?"GPS permission Allow karo.":e.code===2?"Phone ka Location ON karo.":e.code===3?"GPS timeout. Dobara try karo.":"GPS location nahi mil rahi.")),{enableHighAccuracy:true,timeout:15000,maximumAge:0})})}
-function isHoliday(d){return COMPANY_HOLIDAYS.includes(d)}function isWeeklyOff(e,w){return e.week_off&&String(e.week_off).trim().toLowerCase()===w.toLowerCase()}
-async function verifyEmployee(){const id=document.getElementById("employeeId").value.trim().toUpperCase(),pin=document.getElementById("pin").value.trim();if(!id||!pin){message("Employee ID aur PIN bharo.");return null}const {data:emp,error}=await db.from("employees").select("id,employee_id,name,pin,week_off,active").eq("employee_id",id).eq("pin",pin).eq("active",true).maybeSingle();if(error){message("Database error: "+error.message);return null}if(!emp){message("Employee ID/PIN incorrect.");return null}return emp}
-async function openCamera(type){pendingType=type;capturedPhoto="";cameraTitle.textContent=type==="in"?"ðŸ“¸ Check-In Selfie":"ðŸ“¸ Check-Out Selfie";photoPreview.style.display="none";cameraVideo.style.display="block";capturePhoto.style.display="block";retakePhoto.style.display="none";usePhoto.style.display="none";cameraModal.style.display="block";try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:720},height:{ideal:720}},audio:false});cameraVideo.srcObject=stream}catch(e){closeCamera();message("Camera open nahi ho raha. Camera permission Allow karo.")}}
-function stopCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}cameraVideo.srcObject=null}function closeCamera(){stopCamera();cameraModal.style.display="none";capturedPhoto="";pendingType=null}
-capturePhoto.onclick=()=>{if(!cameraVideo.videoWidth)return message("Camera ready nahi hai. Thoda wait karo.");cameraCanvas.width=cameraVideo.videoWidth;cameraCanvas.height=cameraVideo.videoHeight;cameraCanvas.getContext("2d").drawImage(cameraVideo,0,0,cameraCanvas.width,cameraCanvas.height);capturedPhoto=cameraCanvas.toDataURL("image/jpeg",.65);photoPreview.src=capturedPhoto;photoPreview.style.display="block";cameraVideo.style.display="none";capturePhoto.style.display="none";retakePhoto.style.display="block";usePhoto.style.display="block";stopCamera()};
-retakePhoto.onclick=()=>openCamera(pendingType);usePhoto.onclick=()=>{if(!capturedPhoto)return;const t=pendingType;const p=capturedPhoto;closeCamera();mark(t,p)};cancelCamera.onclick=closeCamera;
-async function mark(type,photo){checkInButton.disabled=true;checkOutButton.disabled=true;try{message("Employee verify ho raha hai...");const emp=await verifyEmployee();if(!emp)return;const now=getIndiaDateTime();if(isHoliday(now.date))return message("Aaj company holiday hai. ðŸ›‘");if(isWeeklyOff(emp,now.weekday))return message("Aaj aapka weekly off hai. ðŸ›‘");message("GPS location verify ho rahi hai...");const gps=await getGPS();if(type==="in"){const {data:existing,error:findError}=await db.from("attendance").select("id,check_in,check_out").eq("employee_id",emp.id).eq("attendance_date",now.date).maybeSingle();if(findError)return message("Attendance check error: "+findError.message);if(existing)return message("Aaj ka attendance already laga hua hai. âš ï¸");const h=+now.time.slice(0,2),m=+now.time.slice(3,5),status=h>9||h===9&&m>30?"Late":"Present";const {error}=await db.from("attendance").insert({employee_id:emp.id,attendance_date:now.date,check_in:now.time,status,check_in_lat:gps.latitude,check_in_lng:gps.longitude,check_in_accuracy:gps.accuracy,check_in_photo:photo});if(error)return message("Check-In error: "+error.message);message("Check-In successful âœ…\nSelfie saved ðŸ“¸\nDistance from office: "+gps.distance+" meters")}else{const {data:a,error:e}=await db.from("attendance").select("*").eq("employee_id",emp.id).eq("attendance_date",now.date).maybeSingle();if(e)return message("Attendance check error: "+e.message);if(!a)return message("Aaj ka Check-In nahi mila.");if(a.check_out)return message("Check-Out already ho chuka hai.");const {error}=await db.from("attendance").update({check_out:now.time,check_out_lat:gps.latitude,check_out_lng:gps.longitude,check_out_accuracy:gps.accuracy,check_out_photo:photo}).eq("id",a.id);if(error)return message("Check-Out error: "+error.message);message("Check-Out successful âœ…\nSelfie saved ðŸ“¸\nDistance from office: "+gps.distance+" meters")}}catch(e){message(e.message||"Something went wrong.")}finally{checkInButton.disabled=false;checkOutButton.disabled=false}}
-async function showMyAttendance(){reportCard.style.display="block";reportMsg.textContent="Employee verify ho raha hai...";reportBody.innerHTML="";const emp=await verifyEmployee();if(!emp){reportMsg.textContent="Employee verify nahi hua.";return}employeeName.textContent=emp.name+" ("+emp.employee_id+")";reportMsg.textContent="Attendance load ho rahi hai...";const {data,error}=await db.from("attendance_report").select("attendance_date,check_in,check_out,status").eq("employee_id",emp.employee_id).order("attendance_date",{ascending:false});if(error)return reportMsg.textContent="Report error: "+error.message;if(!data?.length)return reportMsg.textContent="Abhi attendance record nahi mila.";reportMsg.textContent=data.length+" attendance record found.";data.forEach(r=>{const tr=document.createElement("tr");tr.innerHTML=`<td>${r.attendance_date||"-"}</td><td>${r.check_in||"-"}</td><td>${r.check_out||"-"}</td><td>${r.status||"-"}</td>`;reportBody.appendChild(tr)})}
-checkInButton.onclick=()=>openCamera("in");checkOutButton.onclick=()=>openCamera("out");document.getElementById("myAttendance").onclick=showMyAttendance;window.addEventListener("beforeunload",stopCamera);
-</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Messho SC Attendance</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#f5f7fb;
+  color:#172033;
+}
+
+header{
+  background:#172033;
+  color:#fff;
+  padding:22px 18px;
+  text-align:left;
+}
+
+header h1{
+  margin:0 0 6px;
+  font-size:30px;
+}
+
+header p{
+  margin:0;
+  opacity:.9;
+}
+
+main{
+  max-width:650px;
+  margin:25px auto;
+  padding:0 15px;
+}
+
+.card{
+  background:#fff;
+  padding:20px;
+  border-radius:18px;
+  box-shadow:0 4px 20px #0001;
+  margin-bottom:20px;
+}
+
+h2{
+  margin-top:0;
+}
+
+input,button{
+  width:100%;
+  padding:14px;
+  margin:7px 0;
+  border-radius:10px;
+  font-size:16px;
+}
+
+input{
+  border:1px solid #ddd;
+  background:#fff;
+}
+
+button{
+  border:0;
+  color:#fff;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+button:disabled{
+  opacity:.6;
+}
+
+.checkin{
+  background:#2563eb;
+}
+
+.checkout{
+  background:#d92d20;
+}
+
+.attendanceBtn{
+  background:#172033;
+}
+
+.cameraBtn{
+  background:#16a34a;
+}
+
+#msg{
+  margin-top:12px;
+  padding:13px;
+  border-radius:10px;
+  background:#eef4ff;
+  white-space:pre-line;
+}
+
+.info{
+  margin-top:12px;
+  padding:12px;
+  background:#f7f7f7;
+  border-radius:10px;
+  font-size:13px;
+  word-break:break-all;
+}
+
+#cameraModal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:#000c;
+  z-index:9999;
+  padding:20px;
+}
+
+.cameraBox{
+  max-width:500px;
+  margin:30px auto;
+  background:#fff;
+  border-radius:18px;
+  padding:15px;
+}
+
+#cameraVideo{
+  width:100%;
+  border-radius:12px;
+  background:#000;
+}
+
+#photoPreview{
+  width:100%;
+  border-radius:12px;
+  display:none;
+  margin-top:10px;
+}
+
+.cameraActions{
+  display:flex;
+  gap:8px;
+}
+
+.cameraActions button{
+  flex:1;
+}
+
+.closeBtn{
+  background:#555;
+}
+
+.captureBtn{
+  background:#16a34a;
+}
+
+.useBtn{
+  background:#2563eb;
+}
+
+#reportCard{
+  display:none;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+
+th,td{
+  padding:9px 5px;
+  border-bottom:1px solid #ddd;
+  text-align:left;
+}
+
+th{
+  background:#f1f3f6;
+}
+
+.success{
+  background:#e9f9ee !important;
+  color:#166534;
+}
+
+.error{
+  background:#fff0f0 !important;
+  color:#991b1b;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>Messho SC</h1>
+  <p>Staff Attendance • Shift 09:30 AM–06:00 PM</p>
+</header>
+
+<main>
+
+<div class="card">
+
+<h2>Attendance</h2>
+
+<input
+  id="employeeId"
+  placeholder="Employee ID (e.g. EMP001)"
+  autocomplete="off"
+>
+
+<input
+  id="pin"
+  type="password"
+  placeholder="PIN"
+  autocomplete="off"
+>
+
+<button
+  id="checkIn"
+  class="checkin">
+  🟢 Check In
+</button>
+
+<button
+  id="checkOut"
+  class="checkout">
+  🔴 Check Out
+</button>
+
+<button
+  id="myAttendance"
+  class="attendanceBtn">
+  📋 My Attendance
+</button>
+
+<div id="msg">
+Enter Employee ID and PIN.
+</div>
+
+<div class="info">
+📱 Device ID:
+<span id="deviceIdText">Generating...</span>
+</div>
+
+</div>
+
+
+<div id="reportCard" class="card">
+
+<h2>📋 My Attendance</h2>
+
+<div id="reportMsg">
+Employee verify ho raha hai...
+</div>
+
+<div style="overflow-x:auto;margin-top:12px">
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Check In</th>
+<th>Check Out</th>
+<th>Status</th>
+</tr>
+</thead>
+
+<tbody id="reportBody"></tbody>
+
+</table>
+</div>
+
+</div>
+
+</main>
+
+
+<!-- CAMERA MODAL -->
+
+<div id="cameraModal">
+
+<div class="cameraBox">
+
+<h2 id="cameraTitle">
+📸 Attendance Photo
+</h2>
+
+<video
+  id="cameraVideo"
+  autoplay
+  playsinline>
+</video>
+
+<canvas
+  id="cameraCanvas"
+  style="display:none">
+</canvas>
+
+<img
+  id="photoPreview"
+  alt="Photo Preview"
+>
+
+<div class="cameraActions">
+
+<button
+  id="capturePhoto"
+  class="captureBtn">
+  📸 Capture
+</button>
+
+<button
+  id="usePhoto"
+  class="useBtn"
+  style="display:none">
+  ✅ Use Photo
+</button>
+
+<button
+  id="retakePhoto"
+  class="cameraBtn"
+  style="display:none">
+  🔄 Retake
+</button>
+
+<button
+  id="closeCamera"
+  class="closeBtn">
+  ✖ Close
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+
+/* =====================================================
+   SUPABASE
+===================================================== */
+
+const SUPABASE_URL =
+"https://iijuflktxqqtgjbdywwj.supabase.co";
+
+const SUPABASE_KEY =
+"sb_publishable_DPvuwTV2LgNOIeCR1XOGOQ_NyOMn0J0";
+
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+
+/* =====================================================
+   OFFICE LOCATION
+===================================================== */
+
+const OFFICE_LAT = 19.307765;
+const OFFICE_LNG = 73.071277;
+
+const OFFICE_RADIUS_METERS = 150;
+
+
+/* =====================================================
+   HOLIDAYS
+===================================================== */
+
+const COMPANY_HOLIDAYS = [
+  // "2026-08-15",
+  // "2026-08-27"
+];
+
+
+/* =====================================================
+   ELEMENTS
+===================================================== */
+
+const employeeIdInput =
+  document.getElementById("employeeId");
+
+const pinInput =
+  document.getElementById("pin");
+
+const msg =
+  document.getElementById("msg");
+
+const checkInButton =
+  document.getElementById("checkIn");
+
+const checkOutButton =
+  document.getElementById("checkOut");
+
+const myAttendanceButton =
+  document.getElementById("myAttendance");
+
+const reportCard =
+  document.getElementById("reportCard");
+
+const reportMsg =
+  document.getElementById("reportMsg");
+
+const reportBody =
+  document.getElementById("reportBody");
+
+const deviceIdText =
+  document.getElementById("deviceIdText");
+
+
+/* =====================================================
+   MESSAGE
+===================================================== */
+
+function message(text,type="normal"){
+
+  msg.textContent = text;
+
+  msg.className = "";
+
+  if(type === "success"){
+    msg.classList.add("success");
+  }
+
+  if(type === "error"){
+    msg.classList.add("error");
+  }
+}
+
+
+/* =====================================================
+   DEVICE ID
+===================================================== */
+
+/*
+ Browser actual IMEI/serial number nahi deta.
+
+ Isliye ek permanent browser ID generate karte hain.
+*/
+
+function getDeviceId(){
+
+  let id = localStorage.getItem(
+    "messho_sc_device_id"
+  );
+
+  if(!id){
+
+    if(
+      window.crypto &&
+      crypto.randomUUID
+    ){
+
+      id = crypto.randomUUID();
+
+    }else{
+
+      id =
+        "DEVICE-" +
+        Date.now() +
+        "-" +
+        Math.random()
+          .toString(36)
+          .substring(2,10);
+
+    }
+
+    localStorage.setItem(
+      "messho_sc_device_id",
+      id
+    );
+  }
+
+  return id;
+}
+
+const DEVICE_ID = getDeviceId();
+
+deviceIdText.textContent = DEVICE_ID;
+
+
+/* =====================================================
+   INDIA DATE TIME
+===================================================== */
+
+function getIndiaDateTime(){
+
+  const parts =
+    new Intl.DateTimeFormat(
+      "en-GB",
+      {
+        timeZone:"Asia/Kolkata",
+        year:"numeric",
+        month:"2-digit",
+        day:"2-digit",
+        hour:"2-digit",
+        minute:"2-digit",
+        hour12:false,
+        weekday:"long"
+      }
+    ).formatToParts(new Date());
+
+  const get =
+    type =>
+      parts.find(
+        p => p.type === type
+      )?.value;
+
+  return {
+
+    date:
+      `${get("year")}-${get("month")}-${get("day")}`,
+
+    time:
+      `${get("hour")}:${get("minute")}`,
+
+    weekday:
+      get("weekday")
+  };
+}
+
+
+/* =====================================================
+   DISTANCE
+===================================================== */
+
+function distanceInMeters(
+  lat1,
+  lon1,
+  lat2,
+  lon2
+){
+
+  const R = 6371000;
+
+  const toRadians =
+    value =>
+      value * Math.PI / 180;
+
+  const dLat =
+    toRadians(lat2-lat1);
+
+  const dLon =
+    toRadians(lon2-lon1);
+
+  const a =
+    Math.sin(dLat/2)**2 +
+    Math.cos(toRadians(lat1)) *
+    Math.cos(toRadians(lat2)) *
+    Math.sin(dLon/2)**2;
+
+  const c =
+    2 *
+    Math.atan2(
+      Math.sqrt(a),
+      Math.sqrt(1-a)
+    );
+
+  return R*c;
+}
+
+
+/* =====================================================
+   GPS
+===================================================== */
+
+function getGPS(){
+
+  return new Promise(
+    (resolve,reject)=>{
+
+      if(!navigator.geolocation){
+
+        reject(
+          new Error(
+            "Is device me GPS support nahi hai."
+          )
+        );
+
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+
+        position => {
+
+          const lat =
+            position.coords.latitude;
+
+          const lng =
+            position.coords.longitude;
+
+          const accuracy =
+            position.coords.accuracy;
+
+          const distance =
+            distanceInMeters(
+              lat,
+              lng,
+              OFFICE_LAT,
+              OFFICE_LNG
+            );
+
+          console.log(
+            "Latitude:",
+            lat
+          );
+
+          console.log(
+            "Longitude:",
+            lng
+          );
+
+          console.log(
+            "Accuracy:",
+            accuracy
+          );
+
+          console.log(
+            "Office Distance:",
+            distance
+          );
+
+          if(
+            distance >
+            OFFICE_RADIUS_METERS
+          ){
+
+            reject(
+              new Error(
+                "Attendance blocked ❌\n\n" +
+                "Aap office area se bahar ho.\n" +
+                "Distance: " +
+                Math.round(distance) +
+                " meters\n\n" +
+                "Attendance sirf office ke 150 meter area me lagegi."
+              )
+            );
+
+            return;
+          }
+
+          resolve({
+
+            latitude:lat,
+
+            longitude:lng,
+
+            accuracy:accuracy,
+
+            distance:
+              Math.round(distance)
+
+          });
+
+        },
+
+        error => {
+
+          console.error(
+            "GPS Error:",
+            error
+          );
+
+          let text =
+            "GPS location nahi mil rahi.";
+
+          if(error.code === 1){
+
+            text =
+              "GPS permission Allow karo.";
+
+          }else if(error.code === 2){
+
+            text =
+              "Phone ka Location ON karo.";
+
+          }else if(error.code === 3){
+
+            text =
+              "GPS timeout. Dobara try karo.";
+
+          }
+
+          reject(
+            new Error(text)
+          );
+
+        },
+
+        {
+          enableHighAccuracy:true,
+          timeout:15000,
+          maximumAge:0
+        }
+
+      );
+
+    }
+  );
+}
+
+
+/* =====================================================
+   CAMERA
+===================================================== */
+
+const cameraModal =
+  document.getElementById(
+    "cameraModal"
+  );
+
+const cameraVideo =
+  document.getElementById(
+    "cameraVideo"
+  );
+
+const cameraCanvas =
+  document.getElementById(
+    "cameraCanvas"
+  );
+
+const photoPreview =
+  document.getElementById(
+    "photoPreview"
+  );
+
+const capturePhoto =
+  document.getElementById(
+    "capturePhoto"
+  );
+
+const usePhoto =
+  document.getElementById(
+    "usePhoto"
+  );
+
+const retakePhoto =
+  document.getElementById(
+    "retakePhoto"
+  );
+
+const closeCamera =
+  document.getElementById(
+    "closeCamera"
+  );
+
+const cameraTitle =
+  document.getElementById(
+    "cameraTitle"
+  );
+
+let cameraStream = null;
+let capturedPhoto = "";
+let pendingType = null;
+
+
+/* =====================================================
+   OPEN CAMERA
+===================================================== */
+
+async function openCamera(type){
+
+  pendingType = type;
+
+  capturedPhoto = "";
+
+  cameraTitle.textContent =
+    type === "in"
+      ? "📸 Check-In Photo"
+      : "📸 Check-Out Photo";
+
+  photoPreview.style.display =
+    "none";
+
+  capturePhoto.style.display =
+    "block";
+
+  usePhoto.style.display =
+    "none";
+
+  retakePhoto.style.display =
+    "none";
+
+  cameraModal.style.display =
+    "block";
+
+  try{
+
+    cameraStream =
+      await navigator.mediaDevices.getUserMedia({
+
+        video:{
+          facingMode:"user",
+          width:{ideal:1280},
+          height:{ideal:720}
+        },
+
+        audio:false
+
+      });
+
+    cameraVideo.srcObject =
+      cameraStream;
+
+  }catch(error){
+
+    console.error(error);
+
+    cameraModal.style.display =
+      "none";
+
+    message(
+      "Camera permission Allow karo. 📷",
+      "error"
+    );
+  }
+}
+
+
+/* =====================================================
+   STOP CAMERA
+===================================================== */
+
+function stopCamera(){
+
+  if(cameraStream){
+
+    cameraStream
+      .getTracks()
+      .forEach(
+        track => track.stop()
+      );
+
+    cameraStream = null;
+  }
+
+  cameraVideo.srcObject = null;
+}
+
+
+/* =====================================================
+   CAPTURE PHOTO
+===================================================== */
+
+capturePhoto.onclick = () => {
+
+  if(
+    !cameraVideo.videoWidth
+  ){
+
+    message(
+      "Camera ready nahi hai. Thoda wait karo.",
+      "error"
+    );
+
+    return;
+  }
+
+  const width =
+    cameraVideo.videoWidth;
+
+  const height =
+    cameraVideo.videoHeight;
+
+  const maxWidth = 900;
+
+  const scale =
+    Math.min(
+      1,
+      maxWidth / width
+    );
+
+  cameraCanvas.width =
+    Math.round(width*scale);
+
+  cameraCanvas.height =
+    Math.round(height*scale);
+
+  const ctx =
+    cameraCanvas.getContext("2d");
+
+  ctx.drawImage(
+    cameraVideo,
+    0,
+    0,
+    cameraCanvas.width,
+    cameraCanvas.height
+  );
+
+  capturedPhoto =
+    cameraCanvas.toDataURL(
+      "image/jpeg",
+      0.65
+    );
+
+  photoPreview.src =
+    capturedPhoto;
+
+  photoPreview.style.display =
+    "block";
+
+  capturePhoto.style.display =
+    "none";
+
+  usePhoto.style.display =
+    "block";
+
+  retakePhoto.style.display =
+    "block";
+
+};
+
+
+/* =====================================================
+   RETAKE
+===================================================== */
+
+retakePhoto.onclick = () => {
+
+  capturedPhoto = "";
+
+  photoPreview.style.display =
+    "none";
+
+  capturePhoto.style.display =
+    "block";
+
+  usePhoto.style.display =
+    "none";
+
+  retakePhoto.style.display =
+    "none";
+};
+
+
+/* =====================================================
+   CLOSE
+===================================================== */
+
+closeCamera.onclick = () => {
+
+  stopCamera();
+
+  cameraModal.style.display =
+    "none";
+
+  capturedPhoto = "";
+};
+
+
+/* =====================================================
+   USE PHOTO
+===================================================== */
+
+usePhoto.onclick = () => {
+
+  if(!capturedPhoto){
+
+    message(
+      "Pehle photo capture karo.",
+      "error"
+    );
+
+    return;
+  }
+
+  stopCamera();
+
+  cameraModal.style.display =
+    "none";
+
+  mark(
+    pendingType,
+    capturedPhoto
+  );
+};
+
+
+/* =====================================================
+   HOLIDAY / WEEK OFF
+===================================================== */
+
+function isHoliday(date){
+
+  return COMPANY_HOLIDAYS
+    .includes(date);
+}
+
+
+function isWeeklyOff(
+  employee,
+  weekday
+){
+
+  if(!employee.week_off)
+    return false;
+
+  return String(
+    employee.week_off
+  )
+    .trim()
+    .toLowerCase()
+    ===
+    weekday
+      .toLowerCase();
+}
+
+
+/* =====================================================
+   SAVE DEVICE ID
+===================================================== */
+
+async function saveDeviceId(
+  employee
+){
+
+  /*
+   Best effort:
+   Agar Supabase UPDATE policy allow karti hai
+   to employees table me device_id save hoga.
+  */
+
+  if(
+    employee.device_id === DEVICE_ID
+  ){
+    return;
+  }
+
+  if(
+    employee.device_id
+  ){
+    return;
+  }
+
+  try{
+
+    const result =
+      await db
+        .from("employees")
+        .update({
+          device_id:DEVICE_ID
+        })
+        .eq("id",employee.id);
+
+    if(result.error){
+
+      console.warn(
+        "Device ID save blocked:",
+        result.error.message
+      );
+
+    }
+
+  }catch(error){
+
+    console.warn(
+      "Device ID update failed",
+      error
+    );
+
+  }
+}
+
+
+/* =====================================================
+   MARK ATTENDANCE
+===================================================== */
+
+async function mark(
+  type,
+  photo
+){
+
+  const id =
+    employeeIdInput
+      .value
+      .trim()
+      .toUpperCase();
+
+  const pin =
+    pinInput
+      .value
+      .trim();
+
+  if(!id || !pin){
+
+    message(
+      "Employee ID aur PIN bharo.",
+      "error"
+    );
+
+    return;
+  }
+
+  checkInButton.disabled =
+    true;
+
+  checkOutButton.disabled =
+    true;
+
+  myAttendanceButton.disabled =
+    true;
+
+  try{
+
+    message(
+      "Employee verify ho raha hai..."
+    );
+
+
+    /* =====================================
+       EMPLOYEE
+    ===================================== */
+
+    const {
+      data:emp,
+      error:empError
+    } =
+      await db
+        .from("employees")
+        .select(
+          "id,employee_id,name,pin,week_off,active,device_id"
+        )
+        .eq(
+          "employee_id",
+          id
+        )
+        .eq(
+          "pin",
+          pin
+        )
+        .eq(
+          "active",
+          true
+        )
+        .maybeSingle();
+
+
+    if(empError){
+
+      console.error(empError);
+
+      message(
+        "Database error: " +
+        empError.message,
+        "error"
+      );
+
+      return;
+    }
+
+
+    if(!emp){
+
+      message(
+        "Employee ID/PIN incorrect.",
+        "error"
+      );
+
+      return;
+    }
+
+
+    /* =====================================
+       DEVICE ID
+    ===================================== */
+
+    if(
+      emp.device_id &&
+      emp.device_id !== DEVICE_ID
+    ){
+
+      message(
+        "❌ Ye Employee ID kisi doosre device se registered hai.",
+        "error"
+      );
+
+      return;
+    }
+
+
+    /* =====================================
+       DATE
+    ===================================== */
+
+    const now =
+      getIndiaDateTime();
+
+
+    if(
+      isHoliday(now.date)
+    ){
+
+      message(
+        "Aaj company holiday hai. 🛑",
+        "error"
+      );
+
+      return;
+    }
+
+
+    if(
+      isWeeklyOff(
+        emp,
+        now.weekday
+      )
+    ){
+
+      message(
+        "Aaj aapka weekly off hai. 🛑",
+        "error"
+      );
+
+      return;
+    }
+
+
+    /* =====================================
+       GPS
+    ===================================== */
+
+    message(
+      "GPS location verify ho rahi hai..."
+    );
+
+    const gps =
+      await getGPS();
+
+
+    /* =====================================
+       SAVE DEVICE
+    ===================================== */
+
+    await saveDeviceId(emp);
+
+
+    /* =====================================
+       CHECK-IN
+    ===================================== */
+
+    if(type === "in"){
+
+      const {
+        data:existing,
+        error:findError
+      } =
+        await db
+          .from("attendance")
+          .select(
+            "id,check_in,check_out"
+          )
+          .eq(
+            "employee_id",
+            emp.id
+          )
+          .eq(
+            "attendance_date",
+            now.date
+          )
+          .maybeSingle();
+
+
+      if(findError){
+
+        console.error(findError);
+
+        message(
+          "Attendance check error: " +
+          findError.message,
+          "error"
+        );
+
+        return;
+      }
+
+
+      if(existing){
+
+        message(
+          "Aaj ka attendance already laga hua hai. ⚠️",
+          "error"
+        );
+
+        return;
+      }
+
+
+      const hour =
+        Number(
+          now.time.slice(0,2)
+        );
+
+      const minute =
+        Number(
+          now.time.slice(3,5)
+        );
+
+
+      const late =
+        hour > 9 ||
+        (
+          hour === 9 &&
+          minute > 30
+        );
+
+
+      const status =
+        late
+          ? "Late"
+          : "Present";
+
+
+      const insertData = {
+
+        employee_id:
+          emp.id,
+
+        attendance_date:
+          now.date,
+
+        check_in:
+          now.time,
+
+        status:
+          status,
+
+        check_in_lat:
+          gps.latitude,
+
+        check_in_lng:
+          gps.longitude,
+
+        check_in_accuracy:
+          gps.accuracy
+
+      };
+
+
+      /*
+       Photo column agar table me hai
+       to photo save hogi.
+      */
+
+      if(photo){
+
+ 
