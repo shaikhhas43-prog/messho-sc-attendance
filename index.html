@@ -1,6 +1,5 @@
 <!doctype html>
 <html lang="en">
-
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -8,7 +7,6 @@
 <title>Messho SC Attendance</title>
 
 <style>
-
 *{
   box-sizing:border-box;
 }
@@ -49,37 +47,28 @@ main{
   margin-bottom:18px;
 }
 
-h2{
-  margin-top:0;
-}
-
 input,
 button{
   width:100%;
   padding:13px;
   margin:7px 0;
-  box-sizing:border-box;
   border-radius:10px;
-  border:1px solid #ddd;
   font-size:16px;
 }
 
-input:focus{
-  outline:2px solid #2563eb;
-  border-color:#2563eb;
+input{
+  border:1px solid #ddd;
 }
 
 button{
+  border:0;
   background:#2563eb;
   color:#fff;
-  border:0;
   font-weight:bold;
-  cursor:pointer;
 }
 
 button:disabled{
   opacity:.6;
-  cursor:not-allowed;
 }
 
 .out{
@@ -126,8 +115,7 @@ table{
   font-size:14px;
 }
 
-th,
-td{
+th,td{
   padding:10px 6px;
   border-bottom:1px solid #eee;
   text-align:left;
@@ -146,46 +134,21 @@ th{
   color:#b54708;
   font-weight:bold;
 }
-
-.status-absent{
-  color:#b42318;
-  font-weight:bold;
-}
-
-.small{
-  font-size:12px;
-  color:#667085;
-  margin-top:10px;
-}
-
 </style>
-
 </head>
 
 <body>
 
 <header>
-
-<h1>Messho SC</h1>
-
-<div>
-Staff Attendance • Shift 09:30 AM–06:00 PM
-</div>
-
+  <h1>Messho SC</h1>
+  <div>Staff Attendance • Shift 09:30 AM–06:00 PM</div>
 </header>
 
-
 <main>
-
-
-<!-- ==============================
-     ATTENDANCE CARD
-============================== -->
 
 <div class="card">
 
 <h2>Attendance</h2>
-
 
 <input
   id="employeeId"
@@ -194,7 +157,6 @@ Staff Attendance • Shift 09:30 AM–06:00 PM
   autocapitalize="characters"
 >
 
-
 <input
   id="pin"
   type="password"
@@ -202,65 +164,45 @@ Staff Attendance • Shift 09:30 AM–06:00 PM
   autocomplete="off"
 >
 
-
 <button id="checkIn">
 🟢 Check In
 </button>
-
 
 <button id="checkOut" class="out">
 🔴 Check Out
 </button>
 
-
 <button id="myAttendance" class="secondary">
 📋 My Attendance
 </button>
-
 
 <div id="msg">
 Enter Employee ID and PIN.
 </div>
 
-
-<div class="small">
-Attendance sirf office ke 150 meter area ke andar lagegi.
 </div>
 
-</div>
-
-
-
-<!-- ==============================
-     REPORT CARD
-============================== -->
 
 <div class="card" id="reportCard">
 
 <h2>📋 My Attendance</h2>
 
-
 <div id="employeeName" class="employeeName"></div>
-
 
 <div id="reportMsg">
 Loading...
 </div>
 
-
 <table id="reportTable">
 
 <thead>
-
 <tr>
 <th>Date</th>
 <th>Check In</th>
 <th>Check Out</th>
 <th>Status</th>
 </tr>
-
 </thead>
-
 
 <tbody></tbody>
 
@@ -268,18 +210,12 @@ Loading...
 
 </div>
 
-
 </main>
 
 
-
-<!-- SUPABASE -->
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-
 <script>
-
 
 /* =========================================
    SUPABASE
@@ -288,10 +224,8 @@ Loading...
 const SUPABASE_URL =
 "https://iijuflktxqqtgjbdywwj.supabase.co";
 
-
 const SUPABASE_KEY =
 "sb_publishable_DPvuwTV2LgNOIeCR1XOGOQ_NyOMn0J0";
-
 
 const db =
 window.supabase.createClient(
@@ -300,30 +234,23 @@ window.supabase.createClient(
 );
 
 
-
 /* =========================================
-   OFFICE LOCATION
+   OFFICE GPS
 ========================================= */
 
 const OFFICE_LAT = 19.307765;
-
 const OFFICE_LNG = 73.071277;
 
 const OFFICE_RADIUS_METERS = 150;
 
 
-
 /* =========================================
-   COMPANY HOLIDAYS
+   HOLIDAYS
 ========================================= */
 
 const COMPANY_HOLIDAYS = [
-
-  // Example:
   // "2026-08-15"
-
 ];
-
 
 
 /* =========================================
@@ -333,36 +260,26 @@ const COMPANY_HOLIDAYS = [
 const msg =
 document.getElementById("msg");
 
-
 const checkInButton =
 document.getElementById("checkIn");
-
 
 const checkOutButton =
 document.getElementById("checkOut");
 
-
 const myAttendanceButton =
 document.getElementById("myAttendance");
-
 
 const reportCard =
 document.getElementById("reportCard");
 
-
 const employeeName =
 document.getElementById("employeeName");
-
 
 const reportMsg =
 document.getElementById("reportMsg");
 
-
 const reportBody =
-document.querySelector(
-  "#reportTable tbody"
-);
-
+document.querySelector("#reportTable tbody");
 
 
 /* =========================================
@@ -376,103 +293,56 @@ function message(text,type=""){
   msg.className = "";
 
   if(type){
-
     msg.classList.add(type);
-
   }
-
 }
-
 
 
 /* =========================================
    DEVICE ID
+   Browser/APK installation ID
 ========================================= */
-
-/*
-   APK mein AndroidDevice available ho
-   to uska real device ID use hoga.
-
-   Normal Chrome/browser mein localStorage
-   se ek unique ID generate hogi.
-*/
 
 function getDeviceId(){
 
   try{
 
-    /* -------------------------------
-       APK DEVICE ID
-    ------------------------------- */
-
-    if(
-      window.AndroidDevice &&
-      typeof window.AndroidDevice.getDeviceId ===
-      "function"
-    ){
-
-      const androidId =
-        window.AndroidDevice.getDeviceId();
-
-      if(
-        androidId &&
-        String(androidId).trim()
-      ){
-
-        return String(androidId).trim();
-
-      }
-
-    }
-
-
-    /* -------------------------------
-       BROWSER DEVICE ID
-    ------------------------------- */
-
-    const storageKey =
+    const key =
       "messho_sc_device_id";
 
+    let deviceId =
+      localStorage.getItem(key);
 
-    let browserDeviceId =
-      localStorage.getItem(storageKey);
-
-
-    if(!browserDeviceId){
+    if(!deviceId){
 
       if(
         window.crypto &&
-        typeof crypto.randomUUID ===
-        "function"
+        typeof crypto.randomUUID === "function"
       ){
 
-        browserDeviceId =
-          "WEB-" +
+        deviceId =
+          "DEVICE-" +
           crypto.randomUUID();
 
       }else{
 
-        browserDeviceId =
-          "WEB-" +
+        deviceId =
+          "DEVICE-" +
           Date.now() +
           "-" +
           Math.random()
             .toString(36)
-            .substring(2);
+            .substring(2,12);
 
       }
 
-
       localStorage.setItem(
-        storageKey,
-        browserDeviceId
+        key,
+        deviceId
       );
-
     }
 
-
-    return browserDeviceId;
-
+    return deviceId;
 
   }catch(error){
 
@@ -481,13 +351,9 @@ function getDeviceId(){
       error
     );
 
-
     return "";
-
   }
-
 }
-
 
 
 /* =========================================
@@ -509,17 +375,13 @@ function getIndiaDateTime(){
         hour12:false,
         weekday:"long"
       }
-    ).formatToParts(
-      new Date()
-    );
-
+    ).formatToParts(new Date());
 
   const get =
     type =>
       parts.find(
         p => p.type === type
       )?.value;
-
 
   return {
 
@@ -531,15 +393,12 @@ function getIndiaDateTime(){
 
     weekday:
       get("weekday")
-
   };
-
 }
 
 
-
 /* =========================================
-   DISTANCE CALCULATION
+   DISTANCE
 ========================================= */
 
 function distanceInMeters(
@@ -551,51 +410,32 @@ function distanceInMeters(
 
   const R = 6371000;
 
-
   const toRadians =
     value =>
       value * Math.PI / 180;
 
-
   const dLat =
-    toRadians(
-      lat2 - lat1
-    );
-
+    toRadians(lat2 - lat1);
 
   const dLon =
-    toRadians(
-      lon2 - lon1
-    );
-
+    toRadians(lon2 - lon1);
 
   const a =
     Math.sin(dLat / 2) ** 2 +
 
-    Math.cos(
-      toRadians(lat1)
-    ) *
-
-    Math.cos(
-      toRadians(lat2)
-    ) *
-
+    Math.cos(toRadians(lat1)) *
+    Math.cos(toRadians(lat2)) *
     Math.sin(dLon / 2) ** 2;
-
 
   const c =
     2 *
-
     Math.atan2(
       Math.sqrt(a),
       Math.sqrt(1 - a)
     );
 
-
   return R * c;
-
 }
-
 
 
 /* =========================================
@@ -607,9 +447,7 @@ function getGPS(){
   return new Promise(
     (resolve,reject)=>{
 
-      if(
-        !navigator.geolocation
-      ){
+      if(!navigator.geolocation){
 
         reject(
           new Error(
@@ -618,9 +456,7 @@ function getGPS(){
         );
 
         return;
-
       }
-
 
       navigator.geolocation.getCurrentPosition(
 
@@ -629,14 +465,11 @@ function getGPS(){
           const lat =
             position.coords.latitude;
 
-
           const lng =
             position.coords.longitude;
 
-
           const accuracy =
             position.coords.accuracy;
-
 
           const distance =
             distanceInMeters(
@@ -645,7 +478,6 @@ function getGPS(){
               OFFICE_LAT,
               OFFICE_LNG
             );
-
 
           if(
             distance >
@@ -663,25 +495,18 @@ function getGPS(){
             );
 
             return;
-
           }
-
 
           resolve({
 
             latitude:lat,
-
             longitude:lng,
-
             accuracy:accuracy,
-
-            distance:
-              Math.round(distance)
+            distance:Math.round(distance)
 
           });
 
         },
-
 
         error => {
 
@@ -693,9 +518,7 @@ function getGPS(){
               )
             );
 
-          }
-
-          else if(error.code === 2){
+          }else if(error.code === 2){
 
             reject(
               new Error(
@@ -703,9 +526,7 @@ function getGPS(){
               )
             );
 
-          }
-
-          else if(error.code === 3){
+          }else if(error.code === 3){
 
             reject(
               new Error(
@@ -713,79 +534,51 @@ function getGPS(){
               )
             );
 
-          }
-
-          else{
+          }else{
 
             reject(
               new Error(
                 "GPS location nahi mil rahi."
               )
             );
-
           }
 
         },
 
-
         {
-
           enableHighAccuracy:true,
-
           timeout:15000,
-
           maximumAge:0
-
         }
 
       );
-
     }
   );
-
 }
 
 
-
 /* =========================================
-   HOLIDAY
+   HOLIDAY / WEEK OFF
 ========================================= */
 
 function isHoliday(date){
 
-  return COMPANY_HOLIDAYS
-    .includes(date);
+  return COMPANY_HOLIDAYS.includes(date);
 
 }
 
 
+function isWeeklyOff(employee,weekday){
 
-/* =========================================
-   WEEKLY OFF
-========================================= */
-
-function isWeeklyOff(
-  employee,
-  weekday
-){
-
-  if(!employee.week_off){
-
+  if(!employee.week_off)
     return false;
 
-  }
-
-
-  return String(
-    employee.week_off
-  )
-  .trim()
-  .toLowerCase()
-  ===
-  weekday.toLowerCase();
+  return String(employee.week_off)
+    .trim()
+    .toLowerCase() ===
+    weekday.toLowerCase();
 
 }
-
 
 
 /* =========================================
@@ -801,13 +594,11 @@ async function verifyEmployee(){
       .trim()
       .toUpperCase();
 
-
   const pin =
     document
       .getElementById("pin")
       .value
       .trim();
-
 
   if(!id || !pin){
 
@@ -817,21 +608,12 @@ async function verifyEmployee(){
     );
 
     return null;
-
   }
 
 
-
-  /* -------------------------------
-     DATABASE LOGIN
-  ------------------------------- */
-
   const {
-
     data:emp,
-
     error
-
   } = await db
 
     .from("employees")
@@ -840,29 +622,15 @@ async function verifyEmployee(){
       "id,employee_id,name,pin,week_off,active,device_id"
     )
 
-    .eq(
-      "employee_id",
-      id
-    )
-
-    .eq(
-      "pin",
-      pin
-    )
-
-    .eq(
-      "active",
-      true
-    )
-
+    .eq("employee_id",id)
+    .eq("pin",pin)
+    .eq("active",true)
     .maybeSingle();
-
 
 
   if(error){
 
     console.error(error);
-
 
     message(
       "Database error: " +
@@ -870,11 +638,8 @@ async function verifyEmployee(){
       "error"
     );
 
-
     return null;
-
   }
-
 
 
   if(!emp){
@@ -884,11 +649,8 @@ async function verifyEmployee(){
       "error"
     );
 
-
     return null;
-
   }
-
 
 
   /* =====================================
@@ -903,52 +665,37 @@ async function verifyEmployee(){
 
     message(
       "Device ID generate nahi hua.\n" +
-      "Browser ko refresh karke dobara try karo.",
+      "Browser refresh karke dobara try karo.",
       "error"
     );
 
-
     return null;
-
   }
 
 
-
   /*
-    Agar employee ka device_id NULL hai,
-    to current device register hoga.
+    First successful login:
+    device ID save hoga.
   */
 
   if(!emp.device_id){
 
     const {
-
       error:bindError
-
     } = await db
 
       .from("employees")
 
       .update({
-
-        device_id:
-          currentDevice
-
+        device_id:currentDevice
       })
 
-      .eq(
-        "id",
-        emp.id
-      );
-
+      .eq("id",emp.id);
 
 
     if(bindError){
 
-      console.error(
-        bindError
-      );
-
+      console.error(bindError);
 
       message(
         "Device binding error: " +
@@ -956,21 +703,13 @@ async function verifyEmployee(){
         "error"
       );
 
-
       return null;
-
     }
-
-
-    emp.device_id =
-      currentDevice;
-
 
   }
 
   else if(
-    emp.device_id !==
-    currentDevice
+    emp.device_id !== currentDevice
   ){
 
     message(
@@ -980,17 +719,12 @@ async function verifyEmployee(){
       "error"
     );
 
-
     return null;
-
   }
 
 
-
   return emp;
-
 }
-
 
 
 /* =========================================
@@ -1000,9 +734,7 @@ async function verifyEmployee(){
 async function mark(type){
 
   checkInButton.disabled = true;
-
   checkOutButton.disabled = true;
-
 
   try{
 
@@ -1015,42 +747,24 @@ async function mark(type){
       await verifyEmployee();
 
 
-    if(!emp){
-
+    if(!emp)
       return;
-
-    }
-
 
 
     const now =
       getIndiaDateTime();
 
 
-
-    /* -------------------------------
-       HOLIDAY
-    ------------------------------- */
-
-    if(
-      isHoliday(now.date)
-    ){
+    if(isHoliday(now.date)){
 
       message(
         "Aaj company holiday hai. 🛑",
         "error"
       );
 
-
       return;
-
     }
 
-
-
-    /* -------------------------------
-       WEEK OFF
-    ------------------------------- */
 
     if(
       isWeeklyOff(
@@ -1064,11 +778,8 @@ async function mark(type){
         "error"
       );
 
-
       return;
-
     }
-
 
 
     message(
@@ -1076,10 +787,8 @@ async function mark(type){
     );
 
 
-
     const gps =
       await getGPS();
-
 
 
     /* =====================================
@@ -1089,11 +798,8 @@ async function mark(type){
     if(type === "in"){
 
       const {
-
         data:existing,
-
         error:findError
-
       } = await db
 
         .from("attendance")
@@ -1115,7 +821,6 @@ async function mark(type){
         .maybeSingle();
 
 
-
       if(findError){
 
         message(
@@ -1124,11 +829,8 @@ async function mark(type){
           "error"
         );
 
-
         return;
-
       }
-
 
 
       if(existing){
@@ -1138,22 +840,14 @@ async function mark(type){
           "error"
         );
 
-
         return;
-
       }
 
-
-
-      /* -------------------------------
-         LATE CALCULATION
-      ------------------------------- */
 
       const hour =
         Number(
           now.time.slice(0,2)
         );
-
 
       const minute =
         Number(
@@ -1170,20 +864,11 @@ async function mark(type){
 
 
       const status =
-        late
-          ? "Late"
-          : "Present";
+        late ? "Late" : "Present";
 
-
-
-      /* -------------------------------
-         INSERT ATTENDANCE
-      ------------------------------- */
 
       const {
-
         error
-
       } = await db
 
         .from("attendance")
@@ -1214,11 +899,9 @@ async function mark(type){
         });
 
 
-
       if(error){
 
         console.error(error);
-
 
         if(
           error.message &&
@@ -1232,23 +915,17 @@ async function mark(type){
             "error"
           );
 
-        }
-
-        else{
+        }else{
 
           message(
             "Check-In error: " +
             error.message,
             "error"
           );
-
         }
 
-
         return;
-
       }
-
 
 
       message(
@@ -1268,7 +945,6 @@ async function mark(type){
     }
 
 
-
     /* =====================================
        CHECK OUT
     ===================================== */
@@ -1276,11 +952,8 @@ async function mark(type){
     else{
 
       const {
-
         data:attendance,
-
         error:findError
-
       } = await db
 
         .from("attendance")
@@ -1300,7 +973,6 @@ async function mark(type){
         .maybeSingle();
 
 
-
       if(findError){
 
         message(
@@ -1309,11 +981,8 @@ async function mark(type){
           "error"
         );
 
-
         return;
-
       }
-
 
 
       if(!attendance){
@@ -1323,11 +992,8 @@ async function mark(type){
           "error"
         );
 
-
         return;
-
       }
-
 
 
       if(attendance.check_out){
@@ -1337,21 +1003,12 @@ async function mark(type){
           "error"
         );
 
-
         return;
-
       }
 
 
-
-      /* -------------------------------
-         UPDATE CHECK OUT
-      ------------------------------- */
-
       const {
-
         error
-
       } = await db
 
         .from("attendance")
@@ -1378,7 +1035,6 @@ async function mark(type){
         );
 
 
-
       if(error){
 
         message(
@@ -1387,11 +1043,8 @@ async function mark(type){
           "error"
         );
 
-
         return;
-
       }
-
 
 
       message(
@@ -1407,13 +1060,9 @@ async function mark(type){
 
     }
 
-
-  }
-
-  catch(error){
+  }catch(error){
 
     console.error(error);
-
 
     message(
       error.message ||
@@ -1421,19 +1070,14 @@ async function mark(type){
       "error"
     );
 
-  }
-
-
-  finally{
+  }finally{
 
     checkInButton.disabled = false;
-
     checkOutButton.disabled = false;
 
   }
 
 }
-
 
 
 /* =========================================
@@ -1445,18 +1089,14 @@ async function showMyAttendance(){
   reportCard.style.display =
     "block";
 
-
   reportMsg.textContent =
     "Employee verify ho raha hai...";
-
 
   reportBody.innerHTML = "";
 
 
-
   const emp =
     await verifyEmployee();
-
 
 
   if(!emp){
@@ -1465,9 +1105,7 @@ async function showMyAttendance(){
       "Employee verify nahi hua.";
 
     return;
-
   }
-
 
 
   employeeName.textContent =
@@ -1476,22 +1114,13 @@ async function showMyAttendance(){
     emp.employee_id;
 
 
-
   reportMsg.textContent =
     "Attendance load ho rahi hai...";
 
 
-
-  /* =====================================
-     REPORT
-  ===================================== */
-
   const {
-
     data,
-
     error
-
   } = await db
 
     .from("attendance_report")
@@ -1513,25 +1142,19 @@ async function showMyAttendance(){
     );
 
 
-
   if(error){
 
     console.error(error);
-
 
     reportMsg.textContent =
       "Report error: " +
       error.message;
 
-
     return;
-
   }
 
 
-
   reportBody.innerHTML = "";
-
 
 
   if(
@@ -1543,9 +1166,7 @@ async function showMyAttendance(){
       "Abhi attendance record nahi mila.";
 
     return;
-
   }
-
 
 
   reportMsg.textContent =
@@ -1553,132 +1174,34 @@ async function showMyAttendance(){
     " attendance record found.";
 
 
+  data.forEach(row => {
 
-  data.forEach(
-    row => {
-
-      const tr =
-        document.createElement(
-          "tr"
-        );
+    const tr =
+      document.createElement("tr");
 
 
-      let statusClass = "";
+    let statusClass = "";
 
 
-      if(
-        String(row.status)
-          .toLowerCase()
-          .includes("late")
-      ){
+    if(
+      String(row.status)
+        .toLowerCase()
+        .includes("late")
+    ){
 
-        statusClass =
-          "status-late";
+      statusClass =
+        "status-late";
 
-      }
+    }else if(
+      String(row.status)
+        .toLowerCase()
+        .includes("present")
+    ){
 
-      else if(
-        String(row.status)
-          .toLowerCase()
-          .includes("present")
-      ){
-
-        statusClass =
-          "status-present";
-
-      }
-
-      else if(
-        String(row.status)
-          .toLowerCase()
-          .includes("absent")
-      ){
-
-        statusClass =
-          "status-absent";
-
-      }
-
-
-
-      tr.innerHTML = `
-
-        <td>
-          ${row.attendance_date || "-"}
-        </td>
-
-        <td>
-          ${row.check_in || "-"}
-        </td>
-
-        <td>
-          ${row.check_out || "-"}
-        </td>
-
-        <td class="${statusClass}">
-          ${row.status || "-"}
-        </td>
-
-      `;
-
-
-      reportBody.appendChild(tr);
+      statusClass =
+        "status-present";
 
     }
 
-  );
 
-}
-
-
-
-/* =========================================
-   BUTTONS
-========================================= */
-
-checkInButton.addEventListener(
-  "click",
-  () => mark("in")
-);
-
-
-checkOutButton.addEventListener(
-  "click",
-  () => mark("out")
-);
-
-
-myAttendanceButton.addEventListener(
-  "click",
-  showMyAttendance
-);
-
-
-
-/* =========================================
-   ENTER KEY
-========================================= */
-
-document
-  .getElementById("pin")
-  .addEventListener(
-    "keydown",
-    event => {
-
-      if(
-        event.key === "Enter"
-      ){
-
-        mark("in");
-
-      }
-
-    }
-  );
-
-
-</script>
-
-</body>
-
-</html>
+    tr.innerHTML = `
