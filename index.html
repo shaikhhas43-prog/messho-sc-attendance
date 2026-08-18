@@ -8,6 +8,11 @@
 <title>Messho SC Attendance</title>
 
 <style>
+
+*{
+  box-sizing:border-box;
+}
+
 body{
   font-family:Arial,sans-serif;
   margin:0;
@@ -19,6 +24,15 @@ header{
   background:#172033;
   color:#fff;
   padding:20px;
+}
+
+header h1{
+  margin:0 0 8px;
+  font-size:30px;
+}
+
+header div{
+  font-size:16px;
 }
 
 main{
@@ -35,7 +49,12 @@ main{
   margin-bottom:18px;
 }
 
-input,button{
+h2{
+  margin-top:0;
+}
+
+input,
+button{
   width:100%;
   padding:13px;
   margin:7px 0;
@@ -43,6 +62,11 @@ input,button{
   border-radius:10px;
   border:1px solid #ddd;
   font-size:16px;
+}
+
+input:focus{
+  outline:2px solid #2563eb;
+  border-color:#2563eb;
 }
 
 button{
@@ -55,6 +79,7 @@ button{
 
 button:disabled{
   opacity:.6;
+  cursor:not-allowed;
 }
 
 .out{
@@ -74,6 +99,16 @@ button:disabled{
   white-space:pre-line;
 }
 
+.success{
+  background:#e9f9ee !important;
+  color:#146c2e;
+}
+
+.error{
+  background:#fff0f0 !important;
+  color:#b42318;
+}
+
 #reportCard{
   display:none;
 }
@@ -91,7 +126,8 @@ table{
   font-size:14px;
 }
 
-th,td{
+th,
+td{
   padding:10px 6px;
   border-bottom:1px solid #eee;
   text-align:left;
@@ -100,6 +136,28 @@ th,td{
 th{
   background:#f5f7fb;
 }
+
+.status-present{
+  color:#16803c;
+  font-weight:bold;
+}
+
+.status-late{
+  color:#b54708;
+  font-weight:bold;
+}
+
+.status-absent{
+  color:#b42318;
+  font-weight:bold;
+}
+
+.small{
+  font-size:12px;
+  color:#667085;
+  margin-top:10px;
+}
+
 </style>
 
 </head>
@@ -107,60 +165,88 @@ th{
 <body>
 
 <header>
+
 <h1>Messho SC</h1>
-<div>Staff Attendance • Shift 09:30 AM–06:00 PM</div>
+
+<div>
+Staff Attendance • Shift 09:30 AM–06:00 PM
+</div>
+
 </header>
 
+
 <main>
+
+
+<!-- ==============================
+     ATTENDANCE CARD
+============================== -->
 
 <div class="card">
 
 <h2>Attendance</h2>
 
-<input
-id="employeeId"
-placeholder="Employee ID (e.g. EMP001)"
-autocomplete="off"
->
 
 <input
-id="pin"
-type="password"
-placeholder="PIN"
-autocomplete="off"
+  id="employeeId"
+  placeholder="Employee ID (e.g. EMP001)"
+  autocomplete="off"
+  autocapitalize="characters"
 >
+
+
+<input
+  id="pin"
+  type="password"
+  placeholder="PIN"
+  autocomplete="off"
+>
+
 
 <button id="checkIn">
 🟢 Check In
 </button>
 
+
 <button id="checkOut" class="out">
 🔴 Check Out
 </button>
+
 
 <button id="myAttendance" class="secondary">
 📋 My Attendance
 </button>
 
+
 <div id="msg">
 Enter Employee ID and PIN.
 </div>
 
+
+<div class="small">
+Attendance sirf office ke 150 meter area ke andar lagegi.
 </div>
 
+</div>
+
+
+
+<!-- ==============================
+     REPORT CARD
+============================== -->
 
 <div class="card" id="reportCard">
 
 <h2>📋 My Attendance</h2>
 
-<div
-id="employeeName"
-class="employeeName">
-</div>
+
+<div id="employeeName" class="employeeName"></div>
+
 
 <div id="reportMsg">
 Loading...
 </div>
+
 
 <table id="reportTable">
 
@@ -175,20 +261,25 @@ Loading...
 
 </thead>
 
-<tbody>
-</tbody>
+
+<tbody></tbody>
 
 </table>
 
 </div>
 
+
 </main>
 
+
+
+<!-- SUPABASE -->
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 
 <script>
+
 
 /* =========================================
    SUPABASE
@@ -197,24 +288,29 @@ Loading...
 const SUPABASE_URL =
 "https://iijuflktxqqtgjbdywwj.supabase.co";
 
+
 const SUPABASE_KEY =
 "sb_publishable_DPvuwTV2LgNOIeCR1XOGOQ_NyOMn0J0";
 
+
 const db =
 window.supabase.createClient(
-SUPABASE_URL,
-SUPABASE_KEY
+  SUPABASE_URL,
+  SUPABASE_KEY
 );
 
 
+
 /* =========================================
-   OFFICE GPS
+   OFFICE LOCATION
 ========================================= */
 
 const OFFICE_LAT = 19.307765;
+
 const OFFICE_LNG = 73.071277;
 
 const OFFICE_RADIUS_METERS = 150;
+
 
 
 /* =========================================
@@ -229,6 +325,7 @@ const COMPANY_HOLIDAYS = [
 ];
 
 
+
 /* =========================================
    ELEMENTS
 ========================================= */
@@ -236,40 +333,165 @@ const COMPANY_HOLIDAYS = [
 const msg =
 document.getElementById("msg");
 
+
 const checkInButton =
 document.getElementById("checkIn");
+
 
 const checkOutButton =
 document.getElementById("checkOut");
 
+
 const myAttendanceButton =
 document.getElementById("myAttendance");
+
 
 const reportCard =
 document.getElementById("reportCard");
 
+
 const employeeName =
 document.getElementById("employeeName");
+
 
 const reportMsg =
 document.getElementById("reportMsg");
 
-const reportTable =
-document.getElementById("reportTable");
 
 const reportBody =
-reportTable.querySelector("tbody");
+document.querySelector(
+  "#reportTable tbody"
+);
 
 
-function message(text){
+
+/* =========================================
+   MESSAGE
+========================================= */
+
+function message(text,type=""){
 
   msg.textContent = text;
+
+  msg.className = "";
+
+  if(type){
+
+    msg.classList.add(type);
+
+  }
 
 }
 
 
+
 /* =========================================
-   INDIA DATE / TIME
+   DEVICE ID
+========================================= */
+
+/*
+   APK mein AndroidDevice available ho
+   to uska real device ID use hoga.
+
+   Normal Chrome/browser mein localStorage
+   se ek unique ID generate hogi.
+*/
+
+function getDeviceId(){
+
+  try{
+
+    /* -------------------------------
+       APK DEVICE ID
+    ------------------------------- */
+
+    if(
+      window.AndroidDevice &&
+      typeof window.AndroidDevice.getDeviceId ===
+      "function"
+    ){
+
+      const androidId =
+        window.AndroidDevice.getDeviceId();
+
+      if(
+        androidId &&
+        String(androidId).trim()
+      ){
+
+        return String(androidId).trim();
+
+      }
+
+    }
+
+
+    /* -------------------------------
+       BROWSER DEVICE ID
+    ------------------------------- */
+
+    const storageKey =
+      "messho_sc_device_id";
+
+
+    let browserDeviceId =
+      localStorage.getItem(storageKey);
+
+
+    if(!browserDeviceId){
+
+      if(
+        window.crypto &&
+        typeof crypto.randomUUID ===
+        "function"
+      ){
+
+        browserDeviceId =
+          "WEB-" +
+          crypto.randomUUID();
+
+      }else{
+
+        browserDeviceId =
+          "WEB-" +
+          Date.now() +
+          "-" +
+          Math.random()
+            .toString(36)
+            .substring(2);
+
+      }
+
+
+      localStorage.setItem(
+        storageKey,
+        browserDeviceId
+      );
+
+    }
+
+
+    return browserDeviceId;
+
+
+  }catch(error){
+
+    console.error(
+      "Device ID error:",
+      error
+    );
+
+
+    return "";
+
+  }
+
+}
+
+
+
+/* =========================================
+   INDIA DATE/TIME
 ========================================= */
 
 function getIndiaDateTime(){
@@ -279,19 +501,17 @@ function getIndiaDateTime(){
       "en-GB",
       {
         timeZone:"Asia/Kolkata",
-
         year:"numeric",
         month:"2-digit",
         day:"2-digit",
-
         hour:"2-digit",
         minute:"2-digit",
-
         hour12:false,
-
         weekday:"long"
       }
-    ).formatToParts(new Date());
+    ).formatToParts(
+      new Date()
+    );
 
 
   const get =
@@ -317,8 +537,9 @@ function getIndiaDateTime(){
 }
 
 
+
 /* =========================================
-   GPS DISTANCE
+   DISTANCE CALCULATION
 ========================================= */
 
 function distanceInMeters(
@@ -330,16 +551,22 @@ function distanceInMeters(
 
   const R = 6371000;
 
+
   const toRadians =
     value =>
       value * Math.PI / 180;
 
 
   const dLat =
-    toRadians(lat2 - lat1);
+    toRadians(
+      lat2 - lat1
+    );
+
 
   const dLon =
-    toRadians(lon2 - lon1);
+    toRadians(
+      lon2 - lon1
+    );
 
 
   const a =
@@ -358,6 +585,7 @@ function distanceInMeters(
 
   const c =
     2 *
+
     Math.atan2(
       Math.sqrt(a),
       Math.sqrt(1 - a)
@@ -369,6 +597,7 @@ function distanceInMeters(
 }
 
 
+
 /* =========================================
    GPS
 ========================================= */
@@ -378,11 +607,13 @@ function getGPS(){
   return new Promise(
     (resolve,reject)=>{
 
-      if(!navigator.geolocation){
+      if(
+        !navigator.geolocation
+      ){
 
         reject(
           new Error(
-            "This browser does not support GPS."
+            "Is device par GPS available nahi hai."
           )
         );
 
@@ -398,8 +629,10 @@ function getGPS(){
           const lat =
             position.coords.latitude;
 
+
           const lng =
             position.coords.longitude;
+
 
           const accuracy =
             position.coords.accuracy;
@@ -421,8 +654,8 @@ function getGPS(){
 
             reject(
               new Error(
-                "Attendance blocked ❌\n" +
-                "You are outside the office area.\n" +
+                "Attendance blocked ❌\n\n" +
+                "Aap office area se bahar ho.\n" +
                 "Distance: " +
                 Math.round(distance) +
                 " meters"
@@ -452,37 +685,45 @@ function getGPS(){
 
         error => {
 
-          let text =
-            "GPS location nahi mil rahi.";
-
-
           if(error.code === 1){
 
-            text =
-              "GPS permission Allow karo, phir dobara try karo.";
+            reject(
+              new Error(
+                "GPS permission Allow karo."
+              )
+            );
 
           }
-
 
           else if(error.code === 2){
 
-            text =
-              "GPS location unavailable. Location ON karo.";
+            reject(
+              new Error(
+                "Phone ka Location ON karo."
+              )
+            );
 
           }
-
 
           else if(error.code === 3){
 
-            text =
-              "GPS timeout. Dobara try karo.";
+            reject(
+              new Error(
+                "GPS timeout. Dobara try karo."
+              )
+            );
 
           }
 
+          else{
 
-          reject(
-            new Error(text)
-          );
+            reject(
+              new Error(
+                "GPS location nahi mil rahi."
+              )
+            );
+
+          }
 
         },
 
@@ -505,19 +746,22 @@ function getGPS(){
 }
 
 
+
 /* =========================================
    HOLIDAY
 ========================================= */
 
 function isHoliday(date){
 
-  return COMPANY_HOLIDAYS.includes(date);
+  return COMPANY_HOLIDAYS
+    .includes(date);
 
 }
 
 
+
 /* =========================================
-   WEEK OFF
+   WEEKLY OFF
 ========================================= */
 
 function isWeeklyOff(
@@ -525,26 +769,23 @@ function isWeeklyOff(
   weekday
 ){
 
-  if(!employee.week_off)
+  if(!employee.week_off){
+
     return false;
 
+  }
 
-  return (
 
-    String(
-      employee.week_off
-    )
-    .trim()
-    .toLowerCase()
-
+  return String(
+    employee.week_off
+  )
+  .trim()
+  .toLowerCase()
   ===
-
-    weekday
-    .toLowerCase()
-
-  );
+  weekday.toLowerCase();
 
 }
+
 
 
 /* =========================================
@@ -571,13 +812,19 @@ async function verifyEmployee(){
   if(!id || !pin){
 
     message(
-      "Employee ID aur PIN bharo."
+      "Employee ID aur PIN bharo.",
+      "error"
     );
 
     return null;
 
   }
 
+
+
+  /* -------------------------------
+     DATABASE LOGIN
+  ------------------------------- */
 
   const {
 
@@ -585,55 +832,159 @@ async function verifyEmployee(){
 
     error
 
-  } =
+  } = await db
 
-    await db
+    .from("employees")
 
-      .from("employees")
+    .select(
+      "id,employee_id,name,pin,week_off,active,device_id"
+    )
 
-      .select(
-        "id,employee_id,name,pin,week_off,active"
-      )
+    .eq(
+      "employee_id",
+      id
+    )
 
-      .eq(
-        "employee_id",
-        id
-      )
+    .eq(
+      "pin",
+      pin
+    )
 
-      .eq(
-        "pin",
-        pin
-      )
+    .eq(
+      "active",
+      true
+    )
 
-      .eq(
-        "active",
-        true
-      )
+    .maybeSingle();
 
-      .maybeSingle();
 
 
   if(error){
 
+    console.error(error);
+
+
     message(
       "Database error: " +
-      error.message
+      error.message,
+      "error"
     );
+
 
     return null;
 
   }
+
 
 
   if(!emp){
 
     message(
-      "Employee ID/PIN incorrect."
+      "Employee ID/PIN incorrect.",
+      "error"
     );
+
 
     return null;
 
   }
+
+
+
+  /* =====================================
+     DEVICE BINDING
+  ===================================== */
+
+  const currentDevice =
+    getDeviceId();
+
+
+  if(!currentDevice){
+
+    message(
+      "Device ID generate nahi hua.\n" +
+      "Browser ko refresh karke dobara try karo.",
+      "error"
+    );
+
+
+    return null;
+
+  }
+
+
+
+  /*
+    Agar employee ka device_id NULL hai,
+    to current device register hoga.
+  */
+
+  if(!emp.device_id){
+
+    const {
+
+      error:bindError
+
+    } = await db
+
+      .from("employees")
+
+      .update({
+
+        device_id:
+          currentDevice
+
+      })
+
+      .eq(
+        "id",
+        emp.id
+      );
+
+
+
+    if(bindError){
+
+      console.error(
+        bindError
+      );
+
+
+      message(
+        "Device binding error: " +
+        bindError.message,
+        "error"
+      );
+
+
+      return null;
+
+    }
+
+
+    emp.device_id =
+      currentDevice;
+
+
+  }
+
+  else if(
+    emp.device_id !==
+    currentDevice
+  ){
+
+    message(
+      "Attendance blocked ❌\n\n" +
+      "Ye Employee ID kisi doosre device se linked hai.\n\n" +
+      "Registered device se attendance lagao.",
+      "error"
+    );
+
+
+    return null;
+
+  }
+
 
 
   return emp;
@@ -641,8 +992,9 @@ async function verifyEmployee(){
 }
 
 
+
 /* =========================================
-   CHECK IN / CHECK OUT
+   MARK ATTENDANCE
 ========================================= */
 
 async function mark(type){
@@ -650,8 +1002,6 @@ async function mark(type){
   checkInButton.disabled = true;
 
   checkOutButton.disabled = true;
-
-  myAttendanceButton.disabled = true;
 
 
   try{
@@ -665,29 +1015,42 @@ async function mark(type){
       await verifyEmployee();
 
 
-    if(!emp)
+    if(!emp){
+
       return;
+
+    }
+
 
 
     const now =
       getIndiaDateTime();
 
 
+
+    /* -------------------------------
+       HOLIDAY
+    ------------------------------- */
+
     if(
-      isHoliday(
-        now.date
-      )
+      isHoliday(now.date)
     ){
 
       message(
-        "Aaj company holiday hai. 🛑\n" +
-        "Attendance allowed nahi hai."
+        "Aaj company holiday hai. 🛑",
+        "error"
       );
+
 
       return;
 
     }
 
+
+
+    /* -------------------------------
+       WEEK OFF
+    ------------------------------- */
 
     if(
       isWeeklyOff(
@@ -697,13 +1060,15 @@ async function mark(type){
     ){
 
       message(
-        "Aaj aapka weekly off hai. 🛑\n" +
-        "Attendance allowed nahi hai."
+        "Aaj aapka weekly off hai. 🛑",
+        "error"
       );
+
 
       return;
 
     }
+
 
 
     message(
@@ -711,8 +1076,10 @@ async function mark(type){
     );
 
 
+
     const gps =
       await getGPS();
+
 
 
     /* =====================================
@@ -727,73 +1094,75 @@ async function mark(type){
 
         error:findError
 
-      } =
+      } = await db
 
-        await db
+        .from("attendance")
 
-          .from("attendance")
+        .select(
+          "id,check_in,check_out"
+        )
 
-          .select(
-            "id,check_in,check_out"
-          )
+        .eq(
+          "employee_id",
+          emp.id
+        )
 
-          .eq(
-            "employee_id",
-            emp.id
-          )
+        .eq(
+          "attendance_date",
+          now.date
+        )
 
-          .eq(
-            "attendance_date",
-            now.date
-          )
+        .maybeSingle();
 
-          .maybeSingle();
 
 
       if(findError){
 
         message(
           "Attendance check error: " +
-          findError.message
+          findError.message,
+          "error"
         );
+
 
         return;
 
       }
+
 
 
       if(existing){
 
         message(
-          "Aaj ka attendance already laga hua hai. ⚠️"
+          "Aaj ka attendance already laga hua hai. ⚠️",
+          "error"
         );
+
 
         return;
 
       }
 
 
+
+      /* -------------------------------
+         LATE CALCULATION
+      ------------------------------- */
+
       const hour =
         Number(
-          now.time.slice(
-            0,
-            2
-          )
+          now.time.slice(0,2)
         );
 
 
       const minute =
         Number(
-          now.time.slice(
-            3,
-            5
-          )
+          now.time.slice(3,5)
         );
 
 
       const late =
         hour > 9 ||
-
         (
           hour === 9 &&
           minute > 30
@@ -806,69 +1175,98 @@ async function mark(type){
           : "Present";
 
 
+
+      /* -------------------------------
+         INSERT ATTENDANCE
+      ------------------------------- */
+
       const {
 
         error
 
-      } =
+      } = await db
 
-        await db
+        .from("attendance")
 
-          .from("attendance")
+        .insert({
 
-          .insert({
+          employee_id:
+            emp.id,
 
-            employee_id:
-              emp.id,
+          attendance_date:
+            now.date,
 
-            attendance_date:
-              now.date,
+          check_in:
+            now.time,
 
-            check_in:
-              now.time,
+          status:
+            status,
 
-            status:
-              status,
+          check_in_lat:
+            gps.latitude,
 
-            check_in_lat:
-              gps.latitude,
+          check_in_lng:
+            gps.longitude,
 
-            check_in_lng:
-              gps.longitude,
+          check_in_accuracy:
+            gps.accuracy
 
-            check_in_accuracy:
-              gps.accuracy
+        });
 
-          });
 
 
       if(error){
 
-        message(
-          "Check-In error: " +
-          error.message
-        );
+        console.error(error);
+
+
+        if(
+          error.message &&
+          error.message.includes(
+            "attendance_employee_id_attendance_date_key"
+          )
+        ){
+
+          message(
+            "Aaj ka attendance already laga hua hai. ⚠️",
+            "error"
+          );
+
+        }
+
+        else{
+
+          message(
+            "Check-In error: " +
+            error.message,
+            "error"
+          );
+
+        }
+
 
         return;
 
       }
 
 
+
       message(
-
-        "Check-In successful ✅\n" +
-
-        emp.name +
-
-        "\nDistance: " +
-
+        "Check-In successful ✅\n\n" +
+        "Time: " +
+        now.time +
+        "\n" +
+        "Status: " +
+        status +
+        "\n" +
+        "Office distance: " +
         gps.distance +
-
-        " meters"
-
+        " meters",
+        "success"
       );
 
     }
+
 
 
     /* =====================================
@@ -883,131 +1281,144 @@ async function mark(type){
 
         error:findError
 
-      } =
+      } = await db
 
-        await db
+        .from("attendance")
 
-          .from("attendance")
+        .select("*")
 
-          .select("*")
+        .eq(
+          "employee_id",
+          emp.id
+        )
 
-          .eq(
-            "employee_id",
-            emp.id
-          )
+        .eq(
+          "attendance_date",
+          now.date
+        )
 
-          .eq(
-            "attendance_date",
-            now.date
-          )
+        .maybeSingle();
 
-          .maybeSingle();
 
 
       if(findError){
 
         message(
           "Attendance check error: " +
-          findError.message
+          findError.message,
+          "error"
         );
+
 
         return;
 
       }
+
 
 
       if(!attendance){
 
         message(
-          "Aaj ka Check-In nahi mila."
+          "Aaj ka Check-In nahi mila.",
+          "error"
         );
+
 
         return;
 
       }
 
 
-      if(
-        attendance.check_out
-      ){
+
+      if(attendance.check_out){
 
         message(
-          "Check-Out already ho chuka hai."
+          "Check-Out already ho chuka hai.",
+          "error"
         );
+
 
         return;
 
       }
 
+
+
+      /* -------------------------------
+         UPDATE CHECK OUT
+      ------------------------------- */
 
       const {
 
         error
 
-      } =
+      } = await db
 
-        await db
+        .from("attendance")
 
-          .from("attendance")
+        .update({
 
-          .update({
+          check_out:
+            now.time,
 
-            check_out:
-              now.time,
+          check_out_lat:
+            gps.latitude,
 
-            check_out_lat:
-              gps.latitude,
+          check_out_lng:
+            gps.longitude,
 
-            check_out_lng:
-              gps.longitude,
+          check_out_accuracy:
+            gps.accuracy
 
-            check_out_accuracy:
-              gps.accuracy
+        })
 
-          })
+        .eq(
+          "id",
+          attendance.id
+        );
 
-          .eq(
-            "id",
-            attendance.id
-          );
 
 
       if(error){
 
         message(
           "Check-Out error: " +
-          error.message
+          error.message,
+          "error"
         );
+
 
         return;
 
       }
 
 
+
       message(
-
-        "Check-Out successful ✅\n" +
-
-        emp.name +
-
-        "\nDistance: " +
-
+        "Check-Out successful ✅\n\n" +
+        "Time: " +
+        now.time +
+        "\n" +
+        "Office distance: " +
         gps.distance +
-
-        " meters"
-
+        " meters",
+        "success"
       );
 
     }
 
-  }
 
+  }
 
   catch(error){
 
+    console.error(error);
+
+
     message(
       error.message ||
-      "Something went wrong."
+      "Something went wrong.",
+      "error"
     );
 
   }
@@ -1015,18 +1426,14 @@ async function mark(type){
 
   finally{
 
-    checkInButton.disabled =
-      false;
+    checkInButton.disabled = false;
 
-    checkOutButton.disabled =
-      false;
-
-    myAttendanceButton.disabled =
-      false;
+    checkOutButton.disabled = false;
 
   }
 
 }
+
 
 
 /* =========================================
@@ -1035,165 +1442,198 @@ async function mark(type){
 
 async function showMyAttendance(){
 
-  myAttendanceButton.disabled =
-    true;
+  reportCard.style.display =
+    "block";
 
 
-  try{
-
-    const emp =
-      await verifyEmployee();
+  reportMsg.textContent =
+    "Employee verify ho raha hai...";
 
 
-    if(!emp)
-      return;
+  reportBody.innerHTML = "";
 
 
-    reportCard.style.display =
-      "block";
+
+  const emp =
+    await verifyEmployee();
 
 
-    employeeName.textContent =
-      emp.name +
-      " (" +
-      emp.employee_id +
-      ")";
 
+  if(!emp){
 
     reportMsg.textContent =
-      "Attendance load ho rahi hai...";
+      "Employee verify nahi hua.";
+
+    return;
+
+  }
 
 
-    reportBody.innerHTML =
-      "";
+
+  employeeName.textContent =
+    emp.name +
+    " • " +
+    emp.employee_id;
 
 
-    /* =====================================
-       SECURE SUPABASE FUNCTION
-    ===================================== */
 
-    const {
-
-      data,
-
-      error
-
-    } =
-
-      await db.rpc(
-        "get_my_attendance",
-        {
-
-          p_employee_id:
-            emp.employee_id,
-
-          p_pin:
-            emp.pin
-
-        }
-      );
+  reportMsg.textContent =
+    "Attendance load ho rahi hai...";
 
 
-    if(error){
 
-      reportMsg.textContent =
-        "Report error: " +
-        error.message;
+  /* =====================================
+     REPORT
+  ===================================== */
 
-      return;
+  const {
 
-    }
+    data,
 
+    error
 
-    if(
-      !data ||
-      data.length === 0
-    ){
+  } = await db
 
-      reportMsg.textContent =
-        "Abhi attendance record nahi mila.";
+    .from("attendance_report")
 
-      return;
+    .select(
+      "attendance_date,check_in,check_out,status"
+    )
 
-    }
+    .eq(
+      "employee_id",
+      emp.employee_id
+    )
 
-
-    data.forEach(
-      row => {
-
-        const tr =
-          document.createElement(
-            "tr"
-          );
-
-
-        tr.innerHTML =
-
-          "<td>" +
-          (
-            row.attendance_date ||
-            "-"
-          ) +
-          "</td>" +
-
-          "<td>" +
-          (
-            row.check_in ||
-            "-"
-          ) +
-          "</td>" +
-
-          "<td>" +
-          (
-            row.check_out ||
-            "-"
-          ) +
-          "</td>" +
-
-          "<td>" +
-          (
-            row.status ||
-            "-"
-          ) +
-          "</td>";
-
-
-        reportBody.appendChild(
-          tr
-        );
-
+    .order(
+      "attendance_date",
+      {
+        ascending:false
       }
     );
 
 
-    reportMsg.textContent =
-      "Total records: " +
-      data.length;
 
+  if(error){
 
-  }
+    console.error(error);
 
-
-  catch(error){
 
     reportMsg.textContent =
-      "Something went wrong.";
+      "Report error: " +
+      error.message;
+
+
+    return;
 
   }
 
 
-  finally{
 
-    myAttendanceButton.disabled =
-      false;
+  reportBody.innerHTML = "";
+
+
+
+  if(
+    !data ||
+    data.length === 0
+  ){
+
+    reportMsg.textContent =
+      "Abhi attendance record nahi mila.";
+
+    return;
 
   }
+
+
+
+  reportMsg.textContent =
+    data.length +
+    " attendance record found.";
+
+
+
+  data.forEach(
+    row => {
+
+      const tr =
+        document.createElement(
+          "tr"
+        );
+
+
+      let statusClass = "";
+
+
+      if(
+        String(row.status)
+          .toLowerCase()
+          .includes("late")
+      ){
+
+        statusClass =
+          "status-late";
+
+      }
+
+      else if(
+        String(row.status)
+          .toLowerCase()
+          .includes("present")
+      ){
+
+        statusClass =
+          "status-present";
+
+      }
+
+      else if(
+        String(row.status)
+          .toLowerCase()
+          .includes("absent")
+      ){
+
+        statusClass =
+          "status-absent";
+
+      }
+
+
+
+      tr.innerHTML = `
+
+        <td>
+          ${row.attendance_date || "-"}
+        </td>
+
+        <td>
+          ${row.check_in || "-"}
+        </td>
+
+        <td>
+          ${row.check_out || "-"}
+        </td>
+
+        <td class="${statusClass}">
+          ${row.status || "-"}
+        </td>
+
+      `;
+
+
+      reportBody.appendChild(tr);
+
+    }
+
+  );
 
 }
 
 
+
 /* =========================================
-   BUTTON EVENTS
+   BUTTONS
 ========================================= */
 
 checkInButton.addEventListener(
@@ -1213,7 +1653,32 @@ myAttendanceButton.addEventListener(
   showMyAttendance
 );
 
+
+
+/* =========================================
+   ENTER KEY
+========================================= */
+
+document
+  .getElementById("pin")
+  .addEventListener(
+    "keydown",
+    event => {
+
+      if(
+        event.key === "Enter"
+      ){
+
+        mark("in");
+
+      }
+
+    }
+  );
+
+
 </script>
 
 </body>
+
 </html>
