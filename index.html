@@ -3,1498 +3,625 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
 <title>Messho SC Attendance</title>
-
 <style>
-*{
-  box-sizing:border-box;
-}
-
-body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  background:#f5f7fb;
-  color:#172033;
-}
-
-header{
-  background:#172033;
-  color:#fff;
-  padding:22px 18px;
-}
-
-header h1{
-  margin:0 0 6px;
-  font-size:28px;
-}
-
-header p{
-  margin:0;
-  font-size:15px;
-}
-
-main{
-  max-width:650px;
-  margin:24px auto;
-  padding:0 15px;
-}
-
-.card{
-  background:#fff;
-  padding:20px;
-  border-radius:16px;
-  box-shadow:0 4px 18px rgba(0,0,0,.08);
-}
-
-h2{
-  margin-top:0;
-}
-
-input,
-button{
-  width:100%;
-  padding:14px;
-  margin:7px 0;
-  border-radius:10px;
-  font-size:16px;
-}
-
-input{
-  border:1px solid #d8dce5;
-}
-
-button{
-  border:0;
-  color:#fff;
-  font-weight:bold;
-  cursor:pointer;
-  background:#2563eb;
-}
-
-button.out{
-  background:#d92d20;
-}
-
-button.attendanceBtn{
-  background:#172033;
-}
-
-button.secondary{
-  background:#64748b;
-}
-
-button:disabled{
-  opacity:.6;
-  cursor:not-allowed;
-}
-
-#msg{
-  margin-top:12px;
-  padding:13px;
-  background:#eef4ff;
-  border-radius:10px;
-  white-space:pre-line;
-}
-
-#reportCard{
-  display:none;
-  margin-top:18px;
-}
-
-.record{
-  border:1px solid #e2e8f0;
-  border-radius:12px;
-  padding:12px;
-  margin:10px 0;
-  background:#fafcff;
-}
-
-.record strong{
-  display:block;
-  margin-bottom:5px;
-}
-
-.photo{
-  width:100%;
-  max-height:240px;
-  object-fit:cover;
-  border-radius:10px;
-  margin-top:8px;
-}
-
-.modal{
-  display:none;
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.75);
-  z-index:1000;
-  padding:18px;
-  overflow:auto;
-}
-
-.modalBox{
-  max-width:520px;
-  margin:30px auto;
-  background:#fff;
-  border-radius:16px;
-  padding:16px;
-}
-
-#cameraVideo{
-  width:100%;
-  background:#111;
-  border-radius:12px;
-  display:block;
-}
-
-#photoPreview{
-  display:none;
-  width:100%;
-  max-height:350px;
-  object-fit:cover;
-  border-radius:12px;
-}
-
-.small{
-  font-size:13px;
-  color:#64748b;
-  margin-top:10px;
-}
-
-.footer{
-  text-align:center;
-  color:#64748b;
-  font-size:12px;
-  padding:20px;
-}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f5f7fb;color:#172033}
+header{background:#172033;color:#fff;padding:22px 18px}
+header h1{margin:0 0 6px;font-size:28px}
+header p{margin:0;font-size:15px}
+main{max-width:650px;margin:24px auto;padding:0 15px}
+.card{background:#fff;padding:20px;border-radius:16px;box-shadow:0 4px 18px rgba(0,0,0,.08);margin-bottom:18px}
+h2{margin-top:0}
+input,button{width:100%;padding:14px;margin:7px 0;border-radius:10px;font-size:16px}
+input{border:1px solid #d8dce5}
+button{border:0;color:#fff;font-weight:bold;cursor:pointer;background:#2563eb}
+button.out{background:#d92d20}
+button.attendanceBtn{background:#172033}
+button.secondary{background:#64748b}
+button:disabled{opacity:.6;cursor:not-allowed}
+#msg{margin-top:12px;padding:13px;background:#eef4ff;border-radius:10px;white-space:pre-line}
+#deviceInfo{margin-top:10px;padding:12px;background:#f5f5f5;border-radius:10px;font-size:13px;color:#475569;word-break:break-all}
+#reportCard{display:none}
+.record{border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin:10px 0;background:#fafcff}
+.record strong{display:block;margin-bottom:5px}
+.photo{width:100%;max-height:240px;object-fit:cover;border-radius:10px;margin-top:8px}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;padding:18px;overflow:auto}
+.modalBox{max-width:520px;margin:30px auto;background:#fff;border-radius:16px;padding:16px}
+#cameraVideo{width:100%;background:#111;border-radius:12px;display:block}
+#photoPreview{display:none;width:100%;max-height:350px;object-fit:cover;border-radius:12px}
+.small{font-size:13px;color:#64748b;margin-top:10px}
+.footer{text-align:center;color:#64748b;font-size:12px;padding:20px}
 </style>
 </head>
-
 <body>
 
 <header>
   <h1>Messho SC</h1>
-  <p>Staff Attendance - Shift 09:30 AM to 06:00 PM</p>
+  <p>Staff Attendance • Shift 09:30 AM–06:00 PM</p>
 </header>
 
 <main>
+  <div class="card">
+    <h2>Attendance</h2>
 
-<div class="card">
+    <input id="employeeId" placeholder="Employee ID (e.g. EMP001)" autocomplete="off">
+    <input id="pin" type="password" inputmode="numeric" placeholder="PIN" autocomplete="off">
 
-<h2>Attendance</h2>
+    <button id="checkIn">🟢 Check In</button>
+    <button id="checkOut" class="out">🔴 Check Out</button>
+    <button id="myAttendance" class="attendanceBtn">📋 My Attendance</button>
 
-<input
-  id="employeeId"
-  placeholder="Employee ID (e.g. EMP001)"
-  autocomplete="off"
->
+    <div id="msg">Enter Employee ID and PIN.</div>
+    <div id="deviceInfo">📱 Device ID: Generating...</div>
+  </div>
 
-<input
-  id="pin"
-  type="password"
-  inputmode="numeric"
-  placeholder="PIN"
-  autocomplete="off"
->
-
-<button id="checkIn">Check In</button>
-
-<button id="checkOut" class="out">
-  Check Out
-</button>
-
-<button id="myAttendance" class="attendanceBtn">
-  My Attendance
-</button>
-
-<div id="msg">
-  Enter Employee ID and PIN.
-</div>
-
-</div>
-
-<div id="reportCard" class="card">
-
-<h2>My Attendance</h2>
-
-<div id="reportMsg">
-  Loading...
-</div>
-
-<div id="records"></div>
-
-</div>
-
+  <div id="reportCard" class="card">
+    <h2>📋 My Attendance</h2>
+    <div id="reportMsg">Loading...</div>
+    <div id="records"></div>
+  </div>
 </main>
 
 <div id="cameraModal" class="modal">
+  <div class="modalBox">
+    <h2 id="cameraTitle">Take Photo</h2>
 
-<div class="modalBox">
+    <video id="cameraVideo" autoplay playsinline></video>
+    <img id="photoPreview" alt="Photo preview">
 
-<h2 id="cameraTitle">
-  Take Photo
-</h2>
+    <button id="capturePhoto">📷 Take Photo</button>
+    <button id="retakePhoto" class="secondary" style="display:none">🔄 Retake Photo</button>
+    <button id="usePhoto" style="display:none">✅ Use Photo</button>
+    <button id="closeCamera" class="out">Cancel</button>
 
-<video
-  id="cameraVideo"
-  autoplay
-  playsinline>
-</video>
-
-<img
-  id="photoPreview"
-  alt="Photo preview"
->
-
-<button id="capturePhoto">
-  Take Photo
-</button>
-
-<button
-  id="retakePhoto"
-  class="secondary"
-  style="display:none">
-  Retake Photo
-</button>
-
-<button
-  id="usePhoto"
-  style="display:none">
-  Use Photo
-</button>
-
-<button
-  id="closeCamera"
-  class="out">
-  Cancel
-</button>
-
-<div class="small">
-  Camera photo is required for attendance.
+    <div class="small">Camera photo is required for attendance.</div>
+  </div>
 </div>
 
-</div>
-</div>
-
-<div class="footer">
-  Messho SC Staff Attendance
-</div>
+<div class="footer">Messho SC Staff Attendance</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script>
+"use strict";
 
-const SUPABASE_URL =
-"https://iijuflktxqqtgjbdywwj.supabase.co";
+/* ================================
+   SUPABASE
+================================ */
+const SUPABASE_URL="https://iijuflktxqqtgjbdywwj.supabase.co";
+const SUPABASE_KEY="sb_publishable_DPvuwTV2LgNOIeCR1XOGOQ_NyOMn0J0";
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
-const SUPABASE_KEY =
-"sb_publishable_DPvuwTV2LgNOIeCR1XOGOQ_NyOMn0J0";
+/* ================================
+   OFFICE
+================================ */
+const OFFICE_LAT=19.307765;
+const OFFICE_LNG=73.071277;
+const OFFICE_RADIUS_METERS=150;
 
-const db =
-window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
+/* Add holidays as "YYYY-MM-DD" */
+const COMPANY_HOLIDAYS=[];
 
-const OFFICE_LAT = 19.307765;
+/* ================================
+   ELEMENTS
+================================ */
+const $=id=>document.getElementById(id);
+const msg=$("msg");
+const checkInButton=$("checkIn");
+const checkOutButton=$("checkOut");
+const myAttendanceButton=$("myAttendance");
+const deviceInfo=$("deviceInfo");
 
-const OFFICE_LNG = 73.071277;
+const cameraModal=$("cameraModal");
+const cameraTitle=$("cameraTitle");
+const cameraVideo=$("cameraVideo");
+const photoPreview=$("photoPreview");
+const capturePhoto=$("capturePhoto");
+const retakePhoto=$("retakePhoto");
+const usePhoto=$("usePhoto");
+const closeCamera=$("closeCamera");
 
-const OFFICE_RADIUS_METERS = 150;
-
-const COMPANY_HOLIDAYS = [];
-
-const msg =
-document.getElementById("msg");
-
-const checkInButton =
-document.getElementById("checkIn");
-
-const checkOutButton =
-document.getElementById("checkOut");
-
-const myAttendanceButton =
-document.getElementById("myAttendance");
-
-const cameraModal =
-document.getElementById("cameraModal");
-
-const cameraTitle =
-document.getElementById("cameraTitle");
-
-const cameraVideo =
-document.getElementById("cameraVideo");
-
-const photoPreview =
-document.getElementById("photoPreview");
-
-const capturePhoto =
-document.getElementById("capturePhoto");
-
-const retakePhoto =
-document.getElementById("retakePhoto");
-
-const usePhoto =
-document.getElementById("usePhoto");
-
-const closeCamera =
-document.getElementById("closeCamera");
-
-let cameraStream = null;
-
-let pendingType = null;
-
-let capturedPhoto = "";
+let cameraStream=null;
+let pendingType=null;
+let capturedPhoto="";
 
 function message(text){
-
-  msg.textContent = text;
-
+  msg.textContent=String(text);
 }
 
+/* ================================
+   DEVICE ID
+   This does NOT block attendance.
+================================ */
+function getDeviceId(){
+  let id=localStorage.getItem("messho_sc_device_id");
+
+  if(!id){
+    if(window.crypto && crypto.randomUUID){
+      id="MSC-"+crypto.randomUUID();
+    }else{
+      id="MSC-"+Date.now()+"-"+Math.random().toString(36).slice(2,10);
+    }
+    localStorage.setItem("messho_sc_device_id",id);
+  }
+  return id;
+}
+
+function showDeviceId(){
+  deviceInfo.textContent="📱 Device ID: "+getDeviceId();
+}
+
+/* ================================
+   INDIA DATE/TIME
+================================ */
 function getIndiaDateTime(){
+  const parts=new Intl.DateTimeFormat("en-GB",{
+    timeZone:"Asia/Kolkata",
+    year:"numeric",
+    month:"2-digit",
+    day:"2-digit",
+    hour:"2-digit",
+    minute:"2-digit",
+    weekday:"long",
+    hour12:false
+  }).formatToParts(new Date());
 
-  const parts =
-    new Intl.DateTimeFormat(
-      "en-GB",
-      {
-        timeZone:"Asia/Kolkata",
-        year:"numeric",
-        month:"2-digit",
-        day:"2-digit",
-        hour:"2-digit",
-        minute:"2-digit",
-        weekday:"long",
-        hour12:false
-      }
-    ).formatToParts(new Date());
+  const get=t=>parts.find(p=>p.type===t)?.value;
 
-  const get =
-    type =>
-      parts.find(
-        p => p.type === type
-      )?.value;
-
-  return {
-
-    date:
-      `${get("year")}-${get("month")}-${get("day")}`,
-
-    time:
-      `${get("hour")}:${get("minute")}`,
-
-    weekday:
-      get("weekday")
+  return{
+    date:`${get("year")}-${get("month")}-${get("day")}`,
+    time:`${get("hour")}:${get("minute")}`,
+    weekday:get("weekday")
   };
-
 }
 
-function distanceInMeters(
-  lat1,
-  lon1,
-  lat2,
-  lon2
-){
+/* ================================
+   GPS
+================================ */
+function distanceInMeters(lat1,lon1,lat2,lon2){
+  const R=6371000;
+  const rad=v=>v*Math.PI/180;
+  const dLat=rad(lat2-lat1);
+  const dLon=rad(lon2-lon1);
 
-  const R = 6371000;
+  const a=Math.sin(dLat/2)**2+
+    Math.cos(rad(lat1))*Math.cos(rad(lat2))*
+    Math.sin(dLon/2)**2;
 
-  const rad =
-    v => v * Math.PI / 180;
-
-  const dLat =
-    rad(lat2 - lat1);
-
-  const dLon =
-    rad(lon2 - lon1);
-
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(rad(lat1)) *
-    Math.cos(rad(lat2)) *
-    Math.sin(dLon / 2) ** 2;
-
-  return R *
-    2 *
-    Math.atan2(
-      Math.sqrt(a),
-      Math.sqrt(1 - a)
-    );
-
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
 function getGPS(){
+  return new Promise((resolve,reject)=>{
+    if(!navigator.geolocation){
+      reject(new Error("This browser does not support GPS."));
+      return;
+    }
 
-  return new Promise(
-    (resolve,reject)=>{
+    navigator.geolocation.getCurrentPosition(
+      position=>{
+        const lat=position.coords.latitude;
+        const lng=position.coords.longitude;
+        const accuracy=position.coords.accuracy;
+        const distance=distanceInMeters(lat,lng,OFFICE_LAT,OFFICE_LNG);
 
-      if(!navigator.geolocation){
-
-        reject(
-          new Error(
-            "This browser does not support GPS."
-          )
-        );
-
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-
-        position => {
-
-          const lat =
-            position.coords.latitude;
-
-          const lng =
-            position.coords.longitude;
-
-          const accuracy =
-            position.coords.accuracy;
-
-          const distance =
-            distanceInMeters(
-              lat,
-              lng,
-              OFFICE_LAT,
-              OFFICE_LNG
-            );
-
-          if(
-            distance >
-            OFFICE_RADIUS_METERS
-          ){
-
-            reject(
-              new Error(
-                "Attendance blocked.\n" +
-                "You are outside the office area.\n" +
-                "Distance: " +
-                Math.round(distance) +
-                " meters"
-              )
-            );
-
-            return;
-          }
-
-          resolve({
-
-            latitude:lat,
-
-            longitude:lng,
-
-            accuracy:accuracy,
-
-            distance:
-              Math.round(distance)
-
-          });
-
-        },
-
-        error => {
-
-          if(error.code === 1){
-
-            reject(
-              new Error(
-                "GPS permission Allow karo, phir dobara try karo."
-              )
-            );
-
-          }
-          else if(error.code === 2){
-
-            reject(
-              new Error(
-                "Phone ka Location ON karo aur dobara try karo."
-              )
-            );
-
-          }
-          else if(error.code === 3){
-
-            reject(
-              new Error(
-                "GPS timeout. Location ON karke dobara try karo."
-              )
-            );
-
-          }
-          else{
-
-            reject(
-              new Error(
-                "GPS location nahi mil rahi."
-              )
-            );
-
-          }
-
-        },
-
-        {
-          enableHighAccuracy:true,
-          timeout:15000,
-          maximumAge:0
+        if(distance>OFFICE_RADIUS_METERS){
+          reject(new Error(
+            "Attendance blocked ❌\n"+
+            "Aap office area se bahar ho.\n"+
+            "Distance: "+Math.round(distance)+" meters"
+          ));
+          return;
         }
 
-      );
-
-    }
-  );
-
+        resolve({
+          latitude:lat,
+          longitude:lng,
+          accuracy:accuracy,
+          distance:Math.round(distance)
+        });
+      },
+      error=>{
+        if(error.code===1){
+          reject(new Error("GPS permission Allow karo, phir dobara try karo."));
+        }else if(error.code===2){
+          reject(new Error("Phone ka Location ON karo aur dobara try karo."));
+        }else if(error.code===3){
+          reject(new Error("GPS timeout. Location ON karke dobara try karo."));
+        }else{
+          reject(new Error("GPS location nahi mil rahi."));
+        }
+      },
+      {enableHighAccuracy:true,timeout:15000,maximumAge:0}
+    );
+  });
 }
-  function isHoliday(date){
+
+/* ================================
+   WORKING DAY
+================================ */
+function isHoliday(date){
   return COMPANY_HOLIDAYS.includes(date);
 }
 
 function isWeeklyOff(employee,weekday){
-
-  if(!employee.week_off) return false;
-
-  return String(employee.week_off)
-    .trim()
-    .toLowerCase() ===
-    weekday.toLowerCase();
+  if(!employee.week_off)return false;
+  return String(employee.week_off).trim().toLowerCase()===weekday.toLowerCase();
 }
 
-
 /* ================================
-   EMPLOYEE VERIFY
+   VERIFY EMPLOYEE
 ================================ */
-
 async function verifyEmployee(){
+  const id=$("employeeId").value.trim().toUpperCase();
+  const pin=$("pin").value.trim();
 
-  const id =
-    document
-      .getElementById("employeeId")
-      .value
-      .trim()
-      .toUpperCase();
-
-  const pin =
-    document
-      .getElementById("pin")
-      .value
-      .trim();
-
-  if(!id || !pin){
-
-    message(
-      "Employee ID aur PIN bharo."
-    );
-
+  if(!id||!pin){
+    message("Employee ID aur PIN bharo.");
     return null;
   }
 
-  const {
-    data:emp,
-    error
-  } = await db
+  const {data:emp,error}=await db
     .from("employees")
-    .select(
-      "id,employee_id,name,pin,week_off,active"
-    )
+    .select("id,employee_id,name,pin,week_off,active")
     .eq("employee_id",id)
     .eq("pin",pin)
     .eq("active",true)
     .maybeSingle();
 
   if(error){
-
     console.error(error);
-
-    message(
-      "Database error: " +
-      error.message
-    );
-
+    message("Database error: "+error.message);
     return null;
   }
 
   if(!emp){
-
-    message(
-      "Employee ID/PIN incorrect."
-    );
-
+    message("Employee ID/PIN incorrect.");
     return null;
   }
 
   return emp;
 }
 
-
 /* ================================
    CAMERA
 ================================ */
-
 async function openCamera(type){
+  pendingType=type;
+  capturedPhoto="";
 
-  pendingType = type;
-  capturedPhoto = "";
+  cameraTitle.textContent=type==="in"?"Check In Photo":"Check Out Photo";
+  photoPreview.style.display="none";
+  cameraVideo.style.display="block";
+  capturePhoto.style.display="block";
+  retakePhoto.style.display="none";
+  usePhoto.style.display="none";
+  cameraModal.style.display="block";
 
-  cameraTitle.textContent =
-    type === "in"
-      ? "Check In Photo"
-      : "Check Out Photo";
-
-  photoPreview.style.display =
-    "none";
-
-  cameraVideo.style.display =
-    "block";
-
-  capturePhoto.style.display =
-    "block";
-
-  retakePhoto.style.display =
-    "none";
-
-  usePhoto.style.display =
-    "none";
-
-  cameraModal.style.display =
-    "block";
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    cameraModal.style.display="none";
+    message("Is browser me camera available nahi hai.");
+    return;
+  }
 
   try{
-
-    cameraStream =
-      await navigator.mediaDevices.getUserMedia({
-
-        video:{
-          facingMode:"user"
-        },
-
-        audio:false
-
-      });
-
-    cameraVideo.srcObject =
-      cameraStream;
-
-  }
-  catch(error){
-
+    cameraStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:"user"},
+      audio:false
+    });
+    cameraVideo.srcObject=cameraStream;
+  }catch(error){
     console.error(error);
-
-    cameraModal.style.display =
-      "none";
-
-    message(
-      "Camera permission Allow karo."
-    );
-
+    cameraModal.style.display="none";
+    message("Camera permission Allow karo, phir dobara try karo.");
   }
 }
-
-
-/* ================================
-   STOP CAMERA
-================================ */
 
 function stopCamera(){
-
   if(cameraStream){
-
-    cameraStream
-      .getTracks()
-      .forEach(
-        track => track.stop()
-      );
-
-    cameraStream = null;
+    cameraStream.getTracks().forEach(track=>track.stop());
+    cameraStream=null;
   }
-
-  cameraVideo.srcObject = null;
+  cameraVideo.srcObject=null;
 }
 
-
-/* ================================
-   CAPTURE PHOTO
-================================ */
-
-capturePhoto.addEventListener(
-  "click",
-  () => {
-
-    if(!cameraVideo.videoWidth){
-
-      message(
-        "Camera ready nahi hai. Thoda wait karo."
-      );
-
-      return;
-    }
-
-    const canvas =
-      document.createElement(
-        "canvas"
-      );
-
-    const maxWidth = 900;
-
-    const scale =
-      Math.min(
-        1,
-        maxWidth /
-        cameraVideo.videoWidth
-      );
-
-    canvas.width =
-      Math.round(
-        cameraVideo.videoWidth *
-        scale
-      );
-
-    canvas.height =
-      Math.round(
-        cameraVideo.videoHeight *
-        scale
-      );
-
-    const ctx =
-      canvas.getContext("2d");
-
-    ctx.drawImage(
-      cameraVideo,
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-    capturedPhoto =
-      canvas.toDataURL(
-        "image/jpeg",
-        0.72
-      );
-
-    photoPreview.src =
-      capturedPhoto;
-
-    photoPreview.style.display =
-      "block";
-
-    cameraVideo.style.display =
-      "none";
-
-    capturePhoto.style.display =
-      "none";
-
-    retakePhoto.style.display =
-      "block";
-
-    usePhoto.style.display =
-      "block";
-
-    stopCamera();
-
+capturePhoto.addEventListener("click",()=>{
+  if(!cameraVideo.videoWidth){
+    message("Camera ready nahi hai. Thoda wait karo.");
+    return;
   }
-);
 
+  const canvas=document.createElement("canvas");
+  const maxWidth=900;
+  const scale=Math.min(1,maxWidth/cameraVideo.videoWidth);
 
-/* ================================
-   RETAKE
-================================ */
+  canvas.width=Math.round(cameraVideo.videoWidth*scale);
+  canvas.height=Math.round(cameraVideo.videoHeight*scale);
 
-retakePhoto.addEventListener(
-  "click",
-  () => {
+  const ctx=canvas.getContext("2d");
+  ctx.drawImage(cameraVideo,0,0,canvas.width,canvas.height);
 
-    if(pendingType){
+  capturedPhoto=canvas.toDataURL("image/jpeg",0.72);
 
-      openCamera(
-        pendingType
-      );
+  photoPreview.src=capturedPhoto;
+  photoPreview.style.display="block";
+  cameraVideo.style.display="none";
+  capturePhoto.style.display="none";
+  retakePhoto.style.display="block";
+  usePhoto.style.display="block";
 
-    }
+  stopCamera();
+});
 
+retakePhoto.addEventListener("click",()=>{
+  if(pendingType)openCamera(pendingType);
+});
+
+closeCamera.addEventListener("click",()=>{
+  stopCamera();
+  cameraModal.style.display="none";
+  pendingType=null;
+  capturedPhoto="";
+});
+
+usePhoto.addEventListener("click",async()=>{
+  if(!capturedPhoto){
+    message("Pehle photo lo.");
+    return;
   }
-);
 
+  const type=pendingType;
+  const photo=capturedPhoto;
 
-/* ================================
-   CLOSE CAMERA
-================================ */
+  stopCamera();
+  cameraModal.style.display="none";
+  pendingType=null;
+  capturedPhoto="";
 
-closeCamera.addEventListener(
-  "click",
-  () => {
-
-    stopCamera();
-
-    cameraModal.style.display =
-      "none";
-
-    pendingType = null;
-
-    capturedPhoto = "";
-
-  }
-);
-
-
-/* ================================
-   USE PHOTO
-================================ */
-
-usePhoto.addEventListener(
-  "click",
-  async () => {
-
-    if(!capturedPhoto){
-
-      message(
-        "Pehle photo lo."
-      );
-
-      return;
-    }
-
-    const type =
-      pendingType;
-
-    stopCamera();
-
-    cameraModal.style.display =
-      "none";
-
-    pendingType = null;
-
-    await mark(
-      type,
-      capturedPhoto
-    );
-
-  }
-);
-
+  await mark(type,photo);
+});
 
 /* ================================
    MARK ATTENDANCE
 ================================ */
-
-async function mark(
-  type,
-  photo
-){
-
-  checkInButton.disabled =
-    true;
-
-  checkOutButton.disabled =
-    true;
-
-  myAttendanceButton.disabled =
-    true;
+async function mark(type,photo){
+  checkInButton.disabled=true;
+  checkOutButton.disabled=true;
+  myAttendanceButton.disabled=true;
 
   try{
+    message("Employee verify ho raha hai...");
 
-    message(
-      "Employee verify ho raha hai..."
-    );
+    const emp=await verifyEmployee();
+    if(!emp)return;
 
-    const emp =
-      await verifyEmployee();
-
-    if(!emp) return;
-
-
-    const now =
-      getIndiaDateTime();
-
+    const now=getIndiaDateTime();
 
     if(isHoliday(now.date)){
-
-      message(
-        "Aaj company holiday hai."
-      );
-
+      message("Aaj company holiday hai. Attendance allowed nahi hai.");
       return;
     }
 
-
-    if(
-      isWeeklyOff(
-        emp,
-        now.weekday
-      )
-    ){
-
-      message(
-        "Aaj aapka weekly off hai."
-      );
-
+    if(isWeeklyOff(emp,now.weekday)){
+      message("Aaj aapka weekly off hai. Attendance allowed nahi hai.");
       return;
     }
 
+    message("GPS location verify ho rahi hai...");
+    const gps=await getGPS();
 
-    message(
-      "GPS location verify ho rahi hai..."
-    );
-
-    const gps =
-      await getGPS();
-
-
-    /* ==============================
-       CHECK IN
-    ============================== */
-
-    if(type === "in"){
-
-      const {
-        data:existing,
-        error:findError
-      } = await db
+    if(type==="in"){
+      const {data:existing,error:findError}=await db
         .from("attendance")
-        .select(
-          "id,check_in,check_out"
-        )
-        .eq(
-          "employee_id",
-          emp.id
-        )
-        .eq(
-          "attendance_date",
-          now.date
-        )
+        .select("id,check_in,check_out")
+        .eq("employee_id",emp.id)
+        .eq("attendance_date",now.date)
         .maybeSingle();
 
-
       if(findError){
-
-        message(
-          "Attendance check error: " +
-          findError.message
-        );
-
+        message("Attendance check error: "+findError.message);
         return;
       }
-
 
       if(existing){
-
-        message(
-          "Aaj ka attendance already laga hua hai."
-        );
-
+        message("Aaj ka attendance already laga hua hai. ⚠️");
         return;
       }
 
+      const hour=Number(now.time.slice(0,2));
+      const minute=Number(now.time.slice(3,5));
+      const status=(hour>9||(hour===9&&minute>30))?"Late":"Present";
 
-      const hour =
-        Number(
-          now.time.slice(0,2)
-        );
-
-      const minute =
-        Number(
-          now.time.slice(3,5)
-        );
-
-
-      const late =
-        hour > 9 ||
-        (
-          hour === 9 &&
-          minute > 30
-        );
-
-
-      const status =
-        late
-          ? "Late"
-          : "Present";
-
-
-      const {
-        error
-      } = await db
+      const {error}=await db
         .from("attendance")
         .insert({
-
-          employee_id:
-            emp.id,
-
-          attendance_date:
-            now.date,
-
-          check_in:
-            now.time,
-
-          status:
-            status,
-
-          check_in_lat:
-            gps.latitude,
-
-          check_in_lng:
-            gps.longitude,
-
-          check_in_accuracy:
-            gps.accuracy,
-
-          check_in_photo:
-            photo
-
+          employee_id:emp.id,
+          attendance_date:now.date,
+          check_in:now.time,
+          status:status,
+          check_in_lat:gps.latitude,
+          check_in_lng:gps.longitude,
+          check_in_accuracy:gps.accuracy,
+          check_in_photo:photo||null
         });
 
-
       if(error){
-
         console.error(error);
-
-        if(
-          String(error.message)
-            .includes(
-              "attendance_employee_id_attendance_date_key"
-            )
-        ){
-
-          message(
-            "Aaj ka attendance already laga hua hai."
-          );
-
+        if(String(error.message).includes("attendance_employee_id_attendance_date_key")){
+          message("Aaj ka attendance already laga hua hai. ⚠️");
+        }else{
+          message("Check-In error: "+error.message);
         }
-        else{
-
-          message(
-            "Check-In error: " +
-            error.message
-          );
-
-        }
-
         return;
       }
-
 
       message(
-        "Check-In successful.\n" +
-        "Employee: " +
-        emp.name +
-        "\n" +
-        "Time: " +
-        now.time +
-        "\n" +
-        "Distance: " +
-        gps.distance +
-        " meters"
+        "Check-In successful ✅\n"+
+        "Employee: "+emp.name+"\n"+
+        "Time: "+now.time+"\n"+
+        "Distance: "+gps.distance+" meters"
       );
-
-    }
-        /* ==============================
-       CHECK OUT
-    ============================== */
-
-    else{
-
-      const {
-        data:attendance,
-        error:findError
-      } = await db
-        .from("attendance")
-        .select("*")
-        .eq(
-          "employee_id",
-          emp.id
-        )
-        .eq(
-          "attendance_date",
-          now.date
-        )
-        .maybeSingle();
-
-
-      if(findError){
-
-        message(
-          "Attendance check error: " +
-          findError.message
-        );
-
-        return;
-      }
-
-
-      if(!attendance){
-
-        message(
-          "Aaj ka Check-In nahi mila."
-        );
-
-        return;
-      }
-
-
-      if(attendance.check_out){
-
-        message(
-          "Check-Out already ho chuka hai."
-        );
-
-        return;
-      }
-
-
-      const {
-        error
-      } = await db
-        .from("attendance")
-        .update({
-
-          check_out:
-            now.time,
-
-          check_out_lat:
-            gps.latitude,
-
-          check_out_lng:
-            gps.longitude,
-
-          check_out_accuracy:
-            gps.accuracy,
-
-          check_out_photo:
-            photo
-
-        })
-        .eq(
-          "id",
-          attendance.id
-        );
-
-
-      if(error){
-
-        message(
-          "Check-Out error: " +
-          error.message
-        );
-
-        return;
-      }
-
-
-      message(
-        "Check-Out successful.\n" +
-        "Employee: " +
-        emp.name +
-        "\n" +
-        "Time: " +
-        now.time +
-        "\n" +
-        "Distance: " +
-        gps.distance +
-        " meters"
-      );
-
+      return;
     }
 
-  }
-  catch(error){
+    const {data:attendance,error:findError}=await db
+      .from("attendance")
+      .select("*")
+      .eq("employee_id",emp.id)
+      .eq("attendance_date",now.date)
+      .maybeSingle();
 
-    console.error(error);
+    if(findError){
+      message("Attendance check error: "+findError.message);
+      return;
+    }
+
+    if(!attendance){
+      message("Aaj ka Check-In nahi mila.");
+      return;
+    }
+
+    if(attendance.check_out){
+      message("Check-Out already ho chuka hai.");
+      return;
+    }
+
+    const {error}=await db
+      .from("attendance")
+      .update({
+        check_out:now.time,
+        check_out_lat:gps.latitude,
+        check_out_lng:gps.longitude,
+        check_out_accuracy:gps.accuracy,
+        check_out_photo:photo||null
+      })
+      .eq("id",attendance.id);
+
+    if(error){
+      message("Check-Out error: "+error.message);
+      return;
+    }
 
     message(
-      error.message ||
-      "Something went wrong."
+      "Check-Out successful ✅\n"+
+      "Employee: "+emp.name+"\n"+
+      "Time: "+now.time+"\n"+
+      "Distance: "+gps.distance+" meters"
     );
 
+  }catch(error){
+    console.error(error);
+    message(error.message||"Something went wrong.");
+  }finally{
+    checkInButton.disabled=false;
+    checkOutButton.disabled=false;
+    myAttendanceButton.disabled=false;
   }
-  finally{
-
-    checkInButton.disabled =
-      false;
-
-    checkOutButton.disabled =
-      false;
-
-    myAttendanceButton.disabled =
-      false;
-
-  }
-
 }
-
 
 /* ================================
    BUTTONS
 ================================ */
+checkInButton.addEventListener("click",async()=>{
+  const emp=await verifyEmployee();
+  if(emp)openCamera("in");
+});
 
-checkInButton.addEventListener(
-  "click",
-  async () => {
-
-    const emp =
-      await verifyEmployee();
-
-    if(emp){
-
-      openCamera("in");
-
-    }
-
-  }
-);
-
-
-checkOutButton.addEventListener(
-  "click",
-  async () => {
-
-    const emp =
-      await verifyEmployee();
-
-    if(emp){
-
-      openCamera("out");
-
-    }
-
-  }
-);
-
+checkOutButton.addEventListener("click",async()=>{
+  const emp=await verifyEmployee();
+  if(emp)openCamera("out");
+});
 
 /* ================================
    MY ATTENDANCE
 ================================ */
-
 async function showMyAttendance(){
+  const id=$("employeeId").value.trim().toUpperCase();
+  const pin=$("pin").value.trim();
 
-  const id =
-    document
-      .getElementById("employeeId")
-      .value
-      .trim()
-      .toUpperCase();
-
-  const pin =
-    document
-      .getElementById("pin")
-      .value
-      .trim();
-
-
-  if(!id || !pin){
-
-    message(
-      "Employee ID aur PIN bharo."
-    );
-
+  if(!id||!pin){
+    message("Employee ID aur PIN bharo.");
     return;
   }
 
+  const reportCard=$("reportCard");
+  const reportMsg=$("reportMsg");
+  const records=$("records");
 
-  const reportCard =
-    document.getElementById(
-      "reportCard"
-    );
-
-  const reportMsg =
-    document.getElementById(
-      "reportMsg"
-    );
-
-  const records =
-    document.getElementById(
-      "records"
-    );
-
-
-  reportCard.style.display =
-    "block";
-
-  reportMsg.textContent =
-    "Attendance load ho rahi hai...";
-
-  records.innerHTML = "";
-
+  reportCard.style.display="block";
+  reportMsg.textContent="Attendance load ho rahi hai...";
+  records.innerHTML="";
 
   try{
-
-    const {
-      data:emp,
-      error:empError
-    } = await db
+    const {data:emp,error:empError}=await db
       .from("employees")
-      .select(
-        "id,employee_id,name"
-      )
-      .eq(
-        "employee_id",
-        id
-      )
-      .eq(
-        "pin",
-        pin
-      )
-      .eq(
-        "active",
-        true
-      )
+      .select("id,employee_id,name,pin,active")
+      .eq("employee_id",id)
+      .eq("pin",pin)
+      .eq("active",true)
       .maybeSingle();
 
-
-    if(empError){
-
-      throw empError;
-
-    }
-
+    if(empError)throw empError;
 
     if(!emp){
-
-      reportMsg.textContent =
-        "Employee ID/PIN incorrect.";
-
+      reportMsg.textContent="Employee ID/PIN incorrect.";
       return;
     }
 
-
-    const {
-      data:list,
-      error
-    } = await db
+    const {data:list,error}=await db
       .from("attendance")
-      .select(
-        "*"
-      )
-      .eq(
-        "employee_id",
-        emp.id
-      )
-      .order(
-        "attendance_date",
-        {
-          ascending:false
-        }
-      )
+      .select("*")
+      .eq("employee_id",emp.id)
+      .order("attendance_date",{ascending:false})
       .limit(50);
 
+    if(error)throw error;
 
-    if(error){
-
-      throw error;
-
-    }
-
-
-    reportMsg.textContent =
-      emp.name +
-      " - " +
-      emp.employee_id +
-      "\n" +
-      list.length +
-      " attendance record(s) found.";
-
+    reportMsg.textContent=
+      emp.name+" • "+emp.employee_id+
+      "\n"+list.length+" attendance record(s) found.";
 
     if(!list.length){
-
-      records.innerHTML =
-        "<div class='record'>" +
-        "No attendance records found." +
-        "</div>";
-
+      records.innerHTML="<div class='record'>No attendance records found.</div>";
       return;
     }
 
+    list.forEach(row=>{
+      const div=document.createElement("div");
+      div.className="record";
 
-    list.forEach(
-      row => {
+      let html=
+        "<strong>"+(row.attendance_date||"-")+"</strong>"+
+        "<div>Status: "+(row.status||"-")+"</div>"+
+        "<div>Check In: "+(row.check_in||"-")+"</div>"+
+        "<div>Check Out: "+(row.check_out||"-")+"</div>";
 
-        const div =
-          document.createElement(
-            "div"
-          );
-
-        div.className =
-          "record";
-
-
-        let html =
-          "<strong>" +
-          row.attendance_date +
-          "</strong>" +
-
-          "<div>Status: " +
-          (row.status || "-") +
-          "</div>" +
-
-          "<div>Check In: " +
-          (row.check_in || "-") +
-          "</div>" +
-
-          "<div>Check Out: " +
-          (row.check_out || "-") +
-          "</div>";
-
-
-        if(row.check_in_photo){
-
-          html +=
-            "<div>Check In Photo:</div>" +
-
-            "<img " +
-            "class='photo' " +
-            "src='" +
-            row.check_in_photo +
-            "' " +
-            "alt='Check In Photo'>";
-
-        }
-
-
-        if(row.check_out_photo){
-
-          html +=
-            "<div>Check Out Photo:</div>" +
-
-            "<img " +
-            "class='photo' " +
-            "src='" +
-            row.check_out_photo +
-            "' " +
-            "alt='Check Out Photo'>";
-
-        }
-
-
-        div.innerHTML =
-          html;
-
-
-        records.appendChild(
-          div
-        );
-
+      if(row.check_in_photo){
+        html+="<div>Check In Photo:</div>"+
+          "<img class='photo' src='"+row.check_in_photo+"' alt='Check In Photo'>";
       }
-    );
 
-  }
-  catch(error){
+      if(row.check_out_photo){
+        html+="<div>Check Out Photo:</div>"+
+          "<img class='photo' src='"+row.check_out_photo+"' alt='Check Out Photo'>";
+      }
 
+      div.innerHTML=html;
+      records.appendChild(div);
+    });
+
+  }catch(error){
     console.error(error);
-
-    reportMsg.textContent =
-      "Report error: " +
-      error.message;
-
+    reportMsg.textContent="Report error: "+error.message;
   }
-
 }
 
+myAttendanceButton.addEventListener("click",showMyAttendance);
 
-myAttendanceButton.addEventListener(
-  "click",
-  showMyAttendance
-);
-
+/* ================================
+   START
+================================ */
+showDeviceId();
 </script>
-
 </body>
 </html>
